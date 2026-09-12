@@ -1,72 +1,108 @@
 {% extends "base.html" %}
-{% block title %}Add Product - Golden Finds{% endblock %}
+{% block title %}Add product - {{ shop_name }}{% endblock %}
 
 {% block content %}
 <div class="form-card">
-    <h2>New Product</h2>
-    <p class="form-subtitle">This barcode isn't registered yet - add it once and it'll be remembered.</p>
+    <h2>New product</h2>
+    <p class="form-subtitle">
+        This barcode isn't registered yet. Add it once and it's remembered.
+    </p>
 
-    {% if error %}
-    <div class="form-error">{{ error }}</div>
-    {% endif %}
+    {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
 
-    <form method="POST" action="/add-product">
-        <label>Barcode</label>
-        <input type="text" name="barcode" value="{{ barcode }}" required>
+    <form method="POST" action="{{ url_for('inventory.add_product') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <label>Product name</label>
-        <input type="text" name="name" placeholder="e.g. Omo 1kg" required autofocus>
+        <label for="barcode">Barcode</label>
+        <input type="text" id="barcode" name="barcode" value="{{ barcode }}" required>
 
-        <label>Category</label>
-        <select name="category">
-            <option value="Groceries & Food Items">Groceries & Food Items</option>
-            <option value="Personal Care & Cosmetics">Personal Care & Cosmetics</option>
-            <option value="Household Essentials">Household Essentials</option>
-            <option value="Baby Care Products">Baby Care Products</option>
-            <option value="Fashion & Accessories">Fashion & Accessories</option>
-            <option value="Other">Other</option>
+        <label for="name">Product name</label>
+        <input type="text" id="name" name="name" value="{{ form.get('name', '') }}"
+               placeholder="e.g. Omo 1kg" required {{ 'autofocus' if barcode }}>
+
+        <label for="category">Category</label>
+        <select id="category" name="category">
+            {% for c in categories %}
+            <option value="{{ c }}" {{ 'selected' if form.get('category') == c }}>{{ c }}</option>
+            {% endfor %}
         </select>
 
-        <label>Unit type</label>
-        <select name="unit_type">
-            <option value="piece">Piece</option>
-            <option value="kg">Kg</option>
-            <option value="litre">Litre</option>
-            <option value="carton">Carton</option>
-            <option value="bag">Bag</option>
+        <label for="unit_type">Sold by</label>
+        <select id="unit_type" name="unit_type">
+            {% for u in unit_types %}
+            <option value="{{ u }}" {{ 'selected' if form.get('unit_type') == u }}>{{ u | capitalize }}</option>
+            {% endfor %}
         </select>
 
         <div class="form-row">
             <div>
-                <label>Retail price (KSh)</label>
-                <input type="number" step="0.01" name="retail_price" required>
+                <label for="cost_price">Cost price (KSh)</label>
+                <input type="number" step="0.01" min="0" id="cost_price" name="cost_price"
+                       value="{{ form.get('cost_price', '') }}" required>
+                <p class="field-hint">What you pay for it</p>
             </div>
             <div>
-                <label>Wholesale price (KSh)</label>
-                <input type="number" step="0.01" name="wholesale_price" required>
+                <label for="retail_price">Retail price (KSh)</label>
+                <input type="number" step="0.01" min="0" id="retail_price" name="retail_price"
+                       value="{{ form.get('retail_price', '') }}" required>
+                <p class="field-hint">Normal shelf price</p>
             </div>
         </div>
 
         <div class="form-row">
             <div>
-                <label>Wholesale min. quantity</label>
-                <input type="number" name="wholesale_min_qty" value="6">
+                <label for="wholesale_price">Wholesale price (KSh)</label>
+                <input type="number" step="0.01" min="0" id="wholesale_price" name="wholesale_price"
+                       value="{{ form.get('wholesale_price', '') }}" required>
             </div>
             <div>
-                <label>Cost price (KSh)</label>
-                <input type="number" step="0.01" name="cost_price" required>
+                <label for="wholesale_min_qty">Wholesale from (qty)</label>
+                <input type="number" min="1" id="wholesale_min_qty" name="wholesale_min_qty"
+                       value="{{ form.get('wholesale_min_qty', 6) }}">
+                <p class="field-hint">Buying this many gets the lower price</p>
             </div>
         </div>
 
-        <label>Low stock alert threshold</label>
-        <input type="number" name="low_stock_threshold" value="5">
+        <p id="margin-hint" class="margin-hint" hidden></p>
+
+        <label for="low_stock_threshold">Warn me when stock drops to</label>
+        <input type="number" min="0" id="low_stock_threshold" name="low_stock_threshold"
+               value="{{ form.get('low_stock_threshold', 5) }}">
 
         <label class="checkbox-label">
-            <input type="checkbox" name="track_expiry">
-            This product has an expiry date (food, drinks, dairy, etc.)
+            <input type="checkbox" name="track_expiry" {{ 'checked' if form.get('track_expiry') }}>
+            This product expires (food, drinks, dairy, medicine)
         </label>
+        <p class="field-hint">
+            Expiry-tracked products are received in batches and always sold
+            soonest-expiring first.
+        </p>
 
-        <button type="submit" class="btn-checkout">Save Product</button>
+        <div class="form-actions">
+            <button type="submit" name="then" value="sell" class="btn-primary">Save and sell</button>
+            <button type="submit" name="then" value="stock_in" class="btn-secondary">Save and add stock</button>
+        </div>
     </form>
 </div>
+
+<script>
+    // Live margin, so a keying error in the price is obvious before saving.
+    const cost = document.getElementById('cost_price');
+    const retail = document.getElementById('retail_price');
+    const hint = document.getElementById('margin-hint');
+
+    function updateMargin() {
+        const c = parseFloat(cost.value), r = parseFloat(retail.value);
+        if (!c || !r) { hint.hidden = true; return; }
+        const profit = r - c;
+        const pct = (profit / r * 100).toFixed(0);
+        hint.hidden = false;
+        hint.textContent = profit < 0
+            ? `Warning: you would lose KSh ${Math.abs(profit).toFixed(2)} on every unit.`
+            : `Profit KSh ${profit.toFixed(2)} per unit (${pct}% margin).`;
+        hint.className = 'margin-hint ' + (profit < 0 ? 'negative' : 'positive');
+    }
+    cost.addEventListener('input', updateMargin);
+    retail.addEventListener('input', updateMargin);
+</script>
 {% endblock %}

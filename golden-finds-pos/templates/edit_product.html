@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ product['name'] }}{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h2>Edit product</h2>
+    <p class="form-subtitle">
+        {{ product['barcode'] }} &middot; {{ product['stock_quantity'] }} in stock
+    </p>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label for="name">Product name</label>
+        <input type="text" id="name" name="name" value="{{ product['name'] }}" required>
+
+        <label for="category">Category</label>
+        <select id="category" name="category">
+            {% for c in categories %}
+            <option value="{{ c }}" {{ 'selected' if product['category'] == c }}>{{ c }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="unit_type">Sold by</label>
+        <select id="unit_type" name="unit_type">
+            {% for u in unit_types %}
+            <option value="{{ u }}" {{ 'selected' if product['unit_type'] == u }}>{{ u | capitalize }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="form-row">
+            <div>
+                <label for="cost_price">Cost price (KSh)</label>
+                <input type="number" step="0.01" min="0" id="cost_price" name="cost_price"
+                       value="{{ product['cost_price_cents'] | money_plain }}" required>
+            </div>
+            <div>
+                <label for="retail_price">Retail price (KSh)</label>
+                <input type="number" step="0.01" min="0" id="retail_price" name="retail_price"
+                       value="{{ product['retail_price_cents'] | money_plain }}" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label for="wholesale_price">Wholesale price (KSh)</label>
+                <input type="number" step="0.01" min="0" id="wholesale_price" name="wholesale_price"
+                       value="{{ product['wholesale_price_cents'] | money_plain }}" required>
+            </div>
+            <div>
+                <label for="wholesale_min_qty">Wholesale from (qty)</label>
+                <input type="number" min="1" id="wholesale_min_qty" name="wholesale_min_qty"
+                       value="{{ product['wholesale_min_qty'] }}">
+            </div>
+        </div>
+
+        <label for="low_stock_threshold">Warn me when stock drops to</label>
+        <input type="number" min="0" id="low_stock_threshold" name="low_stock_threshold"
+               value="{{ product['low_stock_threshold'] }}">
+
+        <label class="checkbox-label">
+            <input type="checkbox" name="track_expiry" {{ 'checked' if product['track_expiry'] }}>
+            This product expires
+        </label>
+
+        <label class="checkbox-label">
+            <input type="checkbox" name="active" {{ 'checked' if product['active'] }}>
+            Still sold here
+        </label>
+        <p class="field-hint">
+            Unticking hides it from the till. Its sales history is kept.
+        </p>
+
+        <p class="form-note">
+            Price changes are recorded with your name against them.
+            Stock is changed on the
+            <a href="{{ url_for('inventory.adjust_stock', product_id=product['id']) }}">adjust page</a>,
+            not here.
+        </p>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Save changes</button>
+            <a class="btn-secondary" href="{{ url_for('inventory.product_list') }}">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% if movements %}
+<div class="form-card">
+    <h3>Recent stock movement</h3>
+    <table class="data-table compact">
+        <thead>
+            <tr><th>When</th><th>Type</th><th class="num">Change</th><th>By</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        {% for m in movements %}
+            <tr>
+                <td>{{ m['created_at'] }}</td>
+                <td>{{ m['movement_type'].replace('_', ' ') }}</td>
+                <td class="num {{ 'negative' if m['quantity_change'] < 0 }}">
+                    {{ '%+d' % m['quantity_change'] }}
+                </td>
+                <td>{{ m['user_name'] or '—' }}</td>
+                <td>{{ m['note'] or '' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

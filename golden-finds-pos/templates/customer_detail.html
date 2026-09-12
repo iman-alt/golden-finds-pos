@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ customer['name'] }} - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <h1 class="page-title">{{ customer['name'] }}</h1>
+    <a class="btn-secondary" href="{{ url_for('sell.customer_list') }}">All customers</a>
+</div>
+
+<div class="two-col">
+
+    <section class="dash-panel">
+        <h2>Statement</h2>
+        <p class="balance-line">
+            Owes now: <strong>{{ customer['credit_balance_cents'] | money }}</strong>
+            {% if customer['credit_limit_cents'] %}
+            <span class="cell-sub">limit {{ customer['credit_limit_cents'] | money }}</span>
+            {% endif %}
+        </p>
+
+        {% if entries %}
+        <table class="data-table compact">
+            <thead>
+                <tr><th>When</th><th>What</th><th class="num">Amount</th><th>By</th></tr>
+            </thead>
+            <tbody>
+            {% for e in entries %}
+                <tr>
+                    <td>{{ e['created_at'] }}</td>
+                    <td>
+                        {% if e['receipt_number'] %}
+                        <a href="{{ url_for('sell.receipt', sale_id=e['sale_id']) }}">{{ e['receipt_number'] }}</a>
+                        {% else %}
+                        {{ e['note'] or 'payment' }}
+                        {% endif %}
+                    </td>
+                    {# Positive is a charge to the account, negative is a
+                       repayment. Shown with the sign so the column reads
+                       like a ledger. #}
+                    <td class="num {{ 'negative' if e['amount_cents'] < 0 }}">
+                        {{ e['amount_cents'] | money_plain }}
+                    </td>
+                    <td>{{ e['user_name'] or '—' }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-msg">Nothing on this account yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="dash-panel">
+        <h2>Record a payment</h2>
+        {% if customer['credit_balance_cents'] > 0 %}
+        <form method="POST" action="{{ url_for('sell.customer_pay', customer_id=customer['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <label for="amount">Amount (KSh)</label>
+            <input type="number" step="0.01" min="0" id="amount" name="amount"
+                   max="{{ customer['credit_balance_cents'] / 100 }}" required>
+
+            <label for="method">How did they pay?</label>
+            <select id="method" name="method">
+                <option value="cash">Cash</option>
+                <option value="mpesa">M-Pesa</option>
+            </select>
+
+            <button type="submit" class="btn-primary">Record payment</button>
+        </form>
+        {% else %}
+        <p class="empty-msg">This account is settled.</p>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Return - {{ sale['receipt_number'] }}{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h2>Return items</h2>
+    <p class="form-subtitle">
+        Receipt {{ sale['receipt_number'] }} &middot; {{ sale['created_at'] }}
+        &middot; {{ sale['total_cents'] | money }}
+    </p>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label for="product_id">Which item?</label>
+        <select id="product_id" name="product_id" required>
+            {% for item in items %}
+            {% set remaining = item['quantity'] - item['quantity_returned'] %}
+            {% if remaining > 0 %}
+            <option value="{{ item['product_id'] }}">
+                {{ item['name'] }} &mdash; {{ remaining }} of {{ item['quantity'] }} still
+                returnable at {{ item['unit_price_cents'] | money }} each
+            </option>
+            {% endif %}
+            {% endfor %}
+        </select>
+
+        <label for="quantity">How many?</label>
+        <input type="number" id="quantity" name="quantity" min="1" value="1" required>
+
+        <label for="reason">Reason</label>
+        <input type="text" id="reason" name="reason"
+               placeholder="e.g. wrong size, damaged" required>
+
+        <label class="checkbox-label">
+            <input type="radio" name="restocked" value="yes" checked>
+            Goods are fine &mdash; put them back on the shelf
+        </label>
+        <label class="checkbox-label">
+            <input type="radio" name="restocked" value="no">
+            Goods are damaged &mdash; do not restock
+        </label>
+
+        <p class="form-note">
+            The refund is at the price actually paid on this receipt, not
+            at today's price.
+        </p>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Record the return</button>
+            <a class="btn-secondary" href="{{ url_for('sell.receipt', sale_id=sale['id']) }}">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

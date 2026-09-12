@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Sales - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Sales</h1>
+
+<form method="GET" class="filter-bar">
+    <input type="search" name="q" value="{{ filters.get('q', '') }}"
+           placeholder="Receipt number or customer...">
+    <input type="date" name="from" value="{{ filters.get('from', '') }}">
+    <input type="date" name="to" value="{{ filters.get('to', '') }}">
+    {% if is_admin %}
+    <select name="cashier_id">
+        <option value="">Everyone</option>
+        {% for c in cashiers %}
+        <option value="{{ c['id'] }}" {{ 'selected' if filters.get('cashier_id') == c['id'] | string }}>{{ c['name'] }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+    <button type="submit" class="btn-secondary">Filter</button>
+</form>
+
+{% if sales %}
+<div class="table-scroll">
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Receipt</th><th>When</th><th>Cashier</th>
+            <th>Payment</th><th class="num">Items</th><th class="num">Total</th><th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for s in sales %}
+        <tr class="{{ 'row-voided' if s['status'] == 'voided' }}">
+            <td class="mono">{{ s['receipt_number'] }}</td>
+            <td>{{ s['created_at'] }}</td>
+            <td>{{ s['cashier_name'] }}</td>
+            <td>
+                {{ s['payment_method'] }}
+                {% if s['customer_name'] %}<br><span class="cell-sub">{{ s['customer_name'] }}</span>{% endif %}
+            </td>
+            <td class="num">{{ s['item_count'] or 0 }}</td>
+            <td class="num">
+                {{ s['total_cents'] | money_plain }}
+                {% if s['status'] == 'voided' %}<br><span class="chip chip-danger">voided</span>{% endif %}
+            </td>
+            <td class="row-actions">
+                <a href="{{ url_for('sell.receipt', sale_id=s['id']) }}">Receipt</a>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-msg">No sales match that.</p>
+{% endif %}
+{% endblock %}

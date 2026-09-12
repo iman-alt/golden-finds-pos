@@ -1,73 +1,199 @@
 {% extends "base.html" %}
-{% block title %}Dashboard - Golden Finds{% endblock %}
+{% block title %}Dashboard - {{ shop_name }}{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Dashboard</h1>
+<div class="page-head">
+    <h1 class="page-title">Dashboard</h1>
+    <a class="btn-primary" href="{{ url_for('sell.screen') }}">Open the till &rarr;</a>
+</div>
+
+{% if is_admin %}
+{# ---- The owner's numbers for today ---- #}
+<div class="stat-row">
+    <div class="stat-card">
+        <p class="stat-label">Today's takings</p>
+        <p class="stat-value">{{ today.net_revenue_cents | money }}</p>
+        <p class="stat-detail">{{ today.sale_count }} sale{{ '' if today.sale_count == 1 else 's' }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Profit today</p>
+        <p class="stat-value {{ 'negative' if today.profit_cents < 0 }}">{{ today.profit_cents | money }}</p>
+        <p class="stat-detail">after {{ today.cost_cents | money }} cost of goods</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Cash in drawer</p>
+        <p class="stat-value">{{ today.cash_cents | money }}</p>
+        <p class="stat-detail">
+            M-Pesa {{ today.mpesa_cents | money }} &middot; Credit {{ today.credit_cents | money }}
+        </p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Stock on hand</p>
+        <p class="stat-value">{{ inventory.cost_cents | money }}</p>
+        <p class="stat-detail">worth {{ inventory.retail_cents | money }} at retail</p>
+    </div>
+</div>
+
+{% if discrepancies %}
+{# Silent stock drift was one of the original bugs. If it ever happens
+   again, the owner is told rather than finding out at stock-take. #}
+<div class="banner banner-error">
+    <strong>Stock needs checking.</strong>
+    {{ discrepancies | length }} product(s) have a stock level that disagrees
+    with the movement history:
+    {% for row in discrepancies[:5] %}
+        <a href="{{ url_for('inventory.adjust_stock', product_id=row['id']) }}">{{ row['name'] }}</a>{{ ', ' if not loop.last }}
+    {% endfor %}
+</div>
+{% endif %}
+{% endif %}
 
 <div class="dashboard-grid">
 
+    {# ---- Low stock ---- #}
     <section class="dash-panel">
-        <h2>Low Stock</h2>
+        <div class="panel-head">
+            <h2>Low stock</h2>
+            <a class="panel-link" href="{{ url_for('inventory.product_list') }}">All products</a>
+        </div>
+
         {% if low_stock %}
         <ul class="alert-list">
             {% for p in low_stock %}
             <li class="alert-row">
-                <span>{{ p.name }}</span>
-                <span class="alert-badge low-stock-badge">{{ p.stock_quantity }} left</span>
+                <span class="alert-name">{{ p['name'] }}</span>
+                <span class="alert-badge {{ 'badge-empty' if p['stock_quantity'] == 0 else 'badge-low' }}">
+                    {{ 'Out of stock' if p['stock_quantity'] == 0 else p['stock_quantity'] ~ ' left' }}
+                </span>
             </li>
             {% endfor %}
         </ul>
         {% else %}
-        <p class="empty-msg">Nothing low on stock right now.</p>
+        <p class="empty-msg">Nothing is running low.</p>
         {% endif %}
     </section>
 
+    {# ---- Expiry ---- #}
     <section class="dash-panel">
-        <h2>Nearing Expiry</h2>
+        <div class="panel-head">
+            <h2>
+                Nearing expiry
+                {% if urgent_count %}<span class="count-chip">{{ urgent_count }} urgent</span>{% endif %}
+            </h2>
+        </div>
+
         {% if expiry_alerts %}
         <div class="expiry-list">
             {% for a in expiry_alerts %}
-            <div class="expiry-card tier-{{ a.tier }}" data-product-id="{{ a.product_id }}"
-                 data-batch-id="{{ a.batch_id }}" data-retail-price="{{ a.retail_price }}"
+            <div class="expiry-card tier-{{ a.tier }}"
+                 data-product-id="{{ a.product_id }}"
+                 data-batch-id="{{ a.batch_id }}"
+                 data-retail-price="{{ a.retail_price_cents }}"
                  data-tier="{{ a.tier }}">
+
                 <div class="expiry-card-top">
                     <div>
                         <p class="expiry-product-name">{{ a.product_name }}</p>
                         <p class="expiry-detail">
                             {{ a.quantity_remaining }} left &middot;
-                            {% if a.days_left < 0 %}Expired
-                            {% else %}Expires in {{ a.days_left }} day{{ 's' if a.days_left != 1 else '' }}{% endif %}
+                            {% if a.days_left < 0 %}
+                                Expired {{ -a.days_left }} day{{ '' if a.days_left == -1 else 's' }} ago
+                            {% elif a.days_left == 0 %}
+                                Expires today
+                            {% else %}
+                                Expires in {{ a.days_left }} day{{ '' if a.days_left == 1 else 's' }}
+                            {% endif %}
+                            &middot; {{ a.value_at_risk_cents | money }} at risk
                         </p>
                     </div>
-                    <span class="tier-badge tier-badge-{{ a.tier }}">{{ a.tier.replace('_', ' ') }}</span>
+                    <span class="tier-badge tier-badge-{{ a.tier }}">{{ a.tier_label }}</span>
                 </div>
 
-                <button class="btn-put-on-offer">Put on offer</button>
+                {% if a.has_offer %}
+                <p class="offer-active-note">
+                    On offer at {{ a.offer_price_cents | money }}
+                </p>
+                {% elif is_admin %}
+                    {% if a.tier == 'expired' %}
+                    <button class="btn-secondary btn-write-off">Write off {{ a.quantity_remaining }} units</button>
+                    {% else %}
+                    <button class="btn-secondary btn-put-on-offer">Put on offer</button>
 
-                <div class="offer-picker" style="display:none;">
-                    <p class="offer-picker-label">Choose the new price</p>
-                    <div class="offer-options"></div>
-                    <div class="offer-custom-row">
-                        <input type="number" step="0.01" class="offer-custom-price" placeholder="Custom price (KSh)">
+                    <div class="offer-picker" hidden>
+                        <p class="offer-picker-label">
+                            Choose the new price - normally {{ a.retail_price_cents | money }}
+                        </p>
+                        <div class="offer-options">
+                            {% for s in a.suggestions %}
+                            <button type="button" class="offer-option" data-price="{{ s.price_cents }}">
+                                {{ s.price_cents | money }}
+                                <span class="offer-option-pct">-{{ s.percent }}%</span>
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <div class="offer-custom-row">
+                            <input type="number" step="0.01" min="0" class="offer-custom-price"
+                                   placeholder="Or type a price">
+                        </div>
+                        <p class="offer-error" hidden></p>
+                        <button class="btn-primary btn-confirm-offer">Confirm offer</button>
                     </div>
-                    <p class="offer-error" style="display:none;">Pick or enter a price first.</p>
-                    <button class="btn-confirm-offer">Confirm offer</button>
-                </div>
-                <p class="offer-success" style="display:none;">Offer active - cashiers can now apply it.</p>
+                    {% endif %}
+                {% else %}
+                <p class="form-note">The owner decides whether this goes on offer.</p>
+                {% endif %}
+
+                <p class="offer-success" hidden></p>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <p class="empty-msg">Nothing nearing expiry right now.</p>
+        <p class="empty-msg">Nothing is nearing expiry.</p>
         {% endif %}
     </section>
 
+    {% if is_admin and credit %}
+    {# ---- Credit book ---- #}
+    <section class="dash-panel">
+        <div class="panel-head">
+            <h2>Owed to the shop</h2>
+            <a class="panel-link" href="{{ url_for('reports.credit') }}">Details</a>
+        </div>
+        <ul class="alert-list">
+            {% for c in credit[:8] %}
+            <li class="alert-row">
+                <a class="alert-name" href="{{ url_for('sell.customer_detail', customer_id=c['id']) }}">{{ c['name'] }}</a>
+                <span class="alert-badge badge-credit">{{ c['credit_balance_cents'] | money }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% if is_admin and revenue_series %}
+    {# ---- Two-week trend. Bars, not a chart library - it is fourteen
+           numbers and the shop machine should not download a megabyte
+           of JavaScript to draw them. ---- #}
+    <section class="dash-panel">
+        <div class="panel-head">
+            <h2>Last two weeks</h2>
+            <a class="panel-link" href="{{ url_for('reports.index') }}">Reports</a>
+        </div>
+        {% set peak = revenue_series | map(attribute='revenue_cents') | max %}
+        <div class="spark-row">
+            {% for d in revenue_series %}
+            <div class="spark-col" title="{{ d['day'] }}: {{ d['revenue_cents'] | money }}">
+                <div class="spark-bar" style="height: {{ (d['revenue_cents'] / peak * 100) | round }}%"></div>
+                <span class="spark-label">{{ d['day'][-2:] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
 </div>
+{% endblock %}
 
-<p class="dash-links">
-    <a href="/sell">Go to Sell &rarr;</a> &nbsp;|&nbsp;
-    <a href="/stock-in">Go to Stock In &rarr;</a>
-</p>
-
+{% block scripts %}
 <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
 {% endblock %}

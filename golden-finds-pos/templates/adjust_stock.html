@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Adjust stock - {{ product['name'] }}{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h2>Adjust stock</h2>
+    <p class="form-subtitle">
+        {{ product['name'] }} &middot; system says
+        <strong>{{ product['stock_quantity'] }}</strong> in stock
+    </p>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label for="new_quantity">Counted quantity</label>
+        <input type="number" id="new_quantity" name="new_quantity" min="0"
+               value="{{ product['stock_quantity'] }}" required autofocus>
+        <p class="field-hint">What is actually on the shelf right now.</p>
+
+        <label for="reason">Why is it different?</label>
+        <select id="reason" name="reason">
+            <option value="count_adjustment">Stock take correction</option>
+            <option value="damaged">Damaged</option>
+            <option value="expired">Expired</option>
+        </select>
+
+        <p class="form-note">
+            The difference is recorded against your name, not just the new
+            figure. That is what makes a shortfall traceable later.
+        </p>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Save the adjustment</button>
+            <a class="btn-secondary" href="{{ url_for('inventory.product_list') }}">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% if movements %}
+<div class="form-card">
+    <h3>Recent movement</h3>
+    <table class="data-table compact">
+        <thead>
+            <tr><th>When</th><th>Type</th><th class="num">Change</th><th>By</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+        {% for m in movements %}
+            <tr>
+                <td>{{ m['created_at'] }}</td>
+                <td>{{ m['movement_type'].replace('_', ' ') }}</td>
+                <td class="num {{ 'negative' if m['quantity_change'] < 0 }}">
+                    {{ '%+d' % m['quantity_change'] }}
+                </td>
+                <td>{{ m['user_name'] or '—' }}</td>
+                <td>{{ m['note'] or '' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

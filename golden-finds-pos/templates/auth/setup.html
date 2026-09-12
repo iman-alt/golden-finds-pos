@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Set up - {{ shop_name }}{% endblock %}
+{% block main_class %}centered{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <h1 class="auth-brand">🛒 {{ shop_name }}</h1>
+    <p class="auth-subtitle">First time setup - create the owner account</p>
+
+    {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+    <p class="form-note">
+        This account can see takings and profit, set offer prices, and add
+        staff. Keep its PIN to yourself.
+    </p>
+
+    <form method="POST" action="{{ url_for('auth.setup') }}" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label for="name">Your name</label>
+        <input type="text" id="name" name="name" value="{{ name or '' }}" required autofocus>
+
+        <label for="pin">Choose a PIN (4-12 digits)</label>
+        <input type="password" id="pin" name="pin" inputmode="numeric" required>
+
+        <label for="confirm_pin">Type it again</label>
+        <input type="password" id="confirm_pin" name="confirm_pin" inputmode="numeric" required>
+
+        <button type="submit" class="btn-primary btn-block">Create owner account</button>
+    </form>
+</div>
+{% endblock %}

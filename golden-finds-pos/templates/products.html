@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Products - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <h1 class="page-title">Products</h1>
+    <a class="btn-primary" href="{{ url_for('inventory.add_product') }}">Add a product</a>
+</div>
+
+<form method="GET" class="filter-bar">
+    <input type="search" name="q" value="{{ filters.get('q', '') }}"
+           placeholder="Search name or barcode...">
+    <select name="category">
+        <option value="">All categories</option>
+        {% for c in categories %}
+        <option value="{{ c }}" {{ 'selected' if filters.get('category') == c }}>{{ c }}</option>
+        {% endfor %}
+    </select>
+    <label class="checkbox-label inline">
+        <input type="checkbox" name="all" value="1" {{ 'checked' if filters.get('all') == '1' }}>
+        Include discontinued
+    </label>
+    <button type="submit" class="btn-secondary">Filter</button>
+</form>
+
+{% if products %}
+<div class="table-scroll">
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Product</th><th>Barcode</th><th class="num">Stock</th>
+            <th class="num">Cost</th><th class="num">Retail</th>
+            <th class="num">Wholesale</th><th class="num">Margin</th>
+            {% if is_admin %}<th></th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for p in products %}
+        <tr class="{{ 'row-inactive' if not p['active'] }}">
+            <td>
+                {{ p['name'] }}
+                {% if p['track_expiry'] %}<span class="chip">expiry</span>{% endif %}
+                {% if not p['active'] %}<span class="chip chip-muted">discontinued</span>{% endif %}
+                <br><span class="cell-sub">{{ p['category'] or 'Uncategorised' }}</span>
+            </td>
+            <td class="mono">{{ p['barcode'] }}</td>
+            <td class="num">
+                <span class="{{ 'badge-empty' if p['stock_quantity'] == 0 else ('badge-low' if p['stock_quantity'] <= p['low_stock_threshold'] else '') }}">
+                    {{ p['stock_quantity'] }}
+                </span>
+            </td>
+            <td class="num">{{ p['cost_price_cents'] | money_plain }}</td>
+            <td class="num">{{ p['retail_price_cents'] | money_plain }}</td>
+            <td class="num">{{ p['wholesale_price_cents'] | money_plain }}</td>
+            <td class="num">
+                {% set margin = ((p['retail_price_cents'] - p['cost_price_cents']) / p['retail_price_cents'] * 100) | round | int %}
+                <span class="{{ 'negative' if margin < 0 }}">{{ margin }}%</span>
+            </td>
+            {% if is_admin %}
+            <td class="row-actions">
+                <a href="{{ url_for('inventory.edit_product', product_id=p['id']) }}">Edit</a>
+                <a href="{{ url_for('inventory.adjust_stock', product_id=p['id']) }}">Adjust</a>
+            </td>
+            {% endif %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-msg">No products match that.</p>
+{% endif %}
+{% endblock %}

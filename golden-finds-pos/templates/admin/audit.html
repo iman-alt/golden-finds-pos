@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Activity log - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Activity log</h1>
+<p class="page-subtitle">
+    Price changes, voids, offers, PIN resets and failed sign-ins.
+</p>
+
+<form method="GET" class="filter-bar">
+    <select name="action" onchange="this.form.submit()">
+        <option value="">Everything</option>
+        {% for a in actions %}
+        <option value="{{ a['action'] }}" {{ 'selected' if selected == a['action'] }}>
+            {{ a['action'].replace('_', ' ') }}
+        </option>
+        {% endfor %}
+    </select>
+</form>
+
+{% if entries %}
+<div class="table-scroll">
+<table class="data-table">
+    <thead>
+        <tr><th>When</th><th>Who</th><th>What</th><th>Details</th></tr>
+    </thead>
+    <tbody>
+    {% for e in entries %}
+        <tr class="{{ 'row-attention' if e['action'] in ('login_failed', 'sale_voided', 'price_changed') }}">
+            <td>{{ e['created_at'] }}</td>
+            <td>{{ e['user_name'] or 'unknown' }}</td>
+            <td>{{ e['action'].replace('_', ' ') }}</td>
+            <td class="cell-sub">{{ e['detail'] or '' }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-msg">Nothing logged yet.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Product performance - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">What sells</h1>
+        <p class="page-subtitle">{{ date_from }} to {{ date_to }}</p>
+    </div>
+    <form method="GET" class="filter-bar">
+        <select name="days" onchange="this.form.submit()">
+            {% for option in [7, 30, 90, 365] %}
+            <option value="{{ option }}" {{ 'selected' if days == option }}>Last {{ option }} days</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="stat-row">
+    <div class="stat-card">
+        <p class="stat-label">Stock at cost</p>
+        <p class="stat-value">{{ inventory.cost_cents | money }}</p>
+        <p class="stat-detail">{{ inventory.units }} units on the shelves</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Same stock at retail</p>
+        <p class="stat-value">{{ inventory.retail_cents | money }}</p>
+        <p class="stat-detail">
+            {{ (inventory.retail_cents - inventory.cost_cents) | money }} of margin waiting
+        </p>
+    </div>
+</div>
+
+<section class="dash-panel">
+    <h2>Best sellers</h2>
+    {% if top %}
+    <div class="table-scroll">
+    <table class="data-table">
+        <thead>
+            <tr><th>Product</th><th class="num">Units</th><th class="num">Takings</th><th class="num">Profit</th></tr>
+        </thead>
+        <tbody>
+        {% for row in top %}
+            <tr>
+                <td>{{ row['name'] }}</td>
+                <td class="num">{{ row['units_sold'] }}</td>
+                <td class="num">{{ row['revenue_cents'] | money_plain }}</td>
+                <td class="num {{ 'negative' if row['profit_cents'] < 0 }}">
+                    {{ row['profit_cents'] | money_plain }}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">Nothing sold in this period.</p>
+    {% endif %}
+</section>
+
+<section class="dash-panel">
+    <h2>Not moving</h2>
+    <p class="field-hint">
+        In stock, but nothing sold in the last 60 days. This is money
+        sitting still &mdash; worth discounting or not reordering.
+    </p>
+    {% if dead %}
+    <div class="table-scroll">
+    <table class="data-table">
+        <thead>
+            <tr><th>Product</th><th class="num">In stock</th><th class="num">Money tied up</th><th>Last sold</th></tr>
+        </thead>
+        <tbody>
+        {% for row in dead %}
+            <tr>
+                <td>{{ row['name'] }}</td>
+                <td class="num">{{ row['stock_quantity'] }}</td>
+                <td class="num">{{ row['tied_up_cents'] | money_plain }}</td>
+                <td>{{ row['last_sold'] or 'never sold' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">Everything on the shelves is moving.</p>
+    {% endif %}
+</section>
+{% endblock %}

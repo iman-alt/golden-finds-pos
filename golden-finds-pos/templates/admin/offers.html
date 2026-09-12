@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Offers - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Offers</h1>
+<p class="page-subtitle">
+    Offer prices are set here and applied automatically at the till.
+    Nothing goes on offer without you choosing the price.
+</p>
+
+<section class="dash-panel">
+    <h2>Running now</h2>
+    {% if offers %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Product</th><th class="num">Normal</th><th class="num">Offer</th>
+                <th class="num">Off</th><th>Started</th><th>Ends</th><th>Approved by</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for o in offers %}
+            <tr>
+                <td>{{ o['product_name'] }}</td>
+                <td class="num">{{ o['retail_price_cents'] | money_plain }}</td>
+                <td class="num"><strong>{{ o['offer_price_cents'] | money_plain }}</strong></td>
+                <td class="num">
+                    {{ ((o['retail_price_cents'] - o['offer_price_cents']) / o['retail_price_cents'] * 100) | round | int }}%
+                </td>
+                <td>{{ o['start_date'] }}</td>
+                <td>{{ o['end_date'] or 'until ended' }}</td>
+                <td>{{ o['approved_by_name'] or '—' }}</td>
+                <td class="row-actions">
+                    <button class="btn-link btn-end-offer" data-offer-id="{{ o['id'] }}">End</button>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-msg">No offers are running.</p>
+    {% endif %}
+</section>
+
+<section class="dash-panel">
+    <h2>Worth considering</h2>
+    <p class="field-hint">
+        Stock nearing expiry. Set an offer from the dashboard.
+    </p>
+    {% if alerts %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Product</th><th class="num">Left</th><th>Expires</th>
+                <th>Status</th><th class="num">Value at risk</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for a in alerts %}
+            <tr>
+                <td>{{ a.product_name }}</td>
+                <td class="num">{{ a.quantity_remaining }}</td>
+                <td>
+                    {{ a.expiry_date }}
+                    <span class="cell-sub">
+                        {{ 'expired' if a.days_left < 0 else a.days_left ~ ' days' }}
+                    </span>
+                </td>
+                <td><span class="tier-badge tier-badge-{{ a.tier }}">{{ a.tier_label }}</span></td>
+                <td class="num">{{ a.value_at_risk_cents | money_plain }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-msg">Nothing is nearing expiry.</p>
+    {% endif %}
+</section>
+
+<script>
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    document.querySelectorAll('.btn-end-offer').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!confirm('End this offer? The till goes back to the normal price.')) return;
+            const res = await fetch(`/api/offer/${btn.dataset.offerId}/end`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+            });
+            if (res.ok) window.location.reload();
+        });
+    });
+</script>
+{% endblock %}

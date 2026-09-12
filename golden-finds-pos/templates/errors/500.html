@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Something went wrong{% endblock %}
+{% block content %}
+<div class="form-card centered-text">
+    <h2>Something went wrong</h2>
+    <p class="form-note">
+        Nothing was saved. Try again - if it keeps happening, note what you
+        were doing and tell the owner.
+    </p>
+    <a class="btn-primary" href="{{ url_for('dashboard.index') }}">Back to the dashboard</a>
+</div>
+{% endblock %}

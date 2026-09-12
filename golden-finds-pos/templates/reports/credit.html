@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Credit owed - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Owed to the shop</h1>
+        <p class="page-subtitle">Total outstanding: <strong>{{ total_cents | money }}</strong></p>
+    </div>
+    <a class="btn-secondary" href="{{ url_for('sell.customer_list') }}">All customers</a>
+</div>
+
+{% if balances %}
+<table class="data-table">
+    <thead>
+        <tr><th>Customer</th><th>Phone</th><th class="num">Owes</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for row in balances %}
+        <tr>
+            <td>{{ row['name'] }}</td>
+            <td>{{ row['phone'] or '—' }}</td>
+            <td class="num badge-credit">{{ row['credit_balance_cents'] | money_plain }}</td>
+            <td class="row-actions">
+                <a href="{{ url_for('sell.customer_detail', customer_id=row['id']) }}">Statement &amp; payment</a>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-msg">Nobody owes the shop anything.</p>
+{% endif %}
+{% endblock %}

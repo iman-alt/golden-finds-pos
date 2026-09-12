@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Receipt {{ sale['receipt_number'] }}{% endblock %}
+{% block main_class %}centered{% endblock %}
+
+{% block content %}
+<div class="receipt-wrap">
+
+    <div class="receipt {{ 'voided' if sale['status'] == 'voided' }}">
+        <div class="receipt-head">
+            <h1>{{ shop_name }}</h1>
+            <p class="receipt-number">{{ sale['receipt_number'] }}</p>
+            <p class="receipt-meta">
+                {{ sale['created_at'] }}<br>
+                Served by {{ sale['cashier_name'] }}
+                {% if sale['customer_name'] %}<br>Customer: {{ sale['customer_name'] }}{% endif %}
+            </p>
+        </div>
+
+        {% if sale['status'] == 'voided' %}
+        <p class="receipt-void-stamp">
+            VOIDED<br>
+            <span>by {{ sale['voided_by_name'] }} - {{ sale['void_reason'] }}</span>
+        </p>
+        {% endif %}
+
+        <table class="receipt-table">
+            <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="receipt-item">
+                    {{ item['name'] }}
+                    {% if item['price_basis'] != 'retail' %}
+                    <span class="price-tag price-tag-{{ item['price_basis'] }}">
+                        {{ 'Offer' if item['price_basis'] == 'offer' else 'Wholesale' }}
+                    </span>
+                    {% endif %}
+                    {% if item['quantity_returned'] %}
+                    <span class="returned-note">{{ item['quantity_returned'] }} returned</span>
+                    {% endif %}
+                    <br>
+                    <span class="receipt-item-detail">
+                        {{ item['quantity'] }} × {{ item['unit_price_cents'] | money }}
+                    </span>
+                </td>
+                <td class="receipt-amount">{{ item['line_total_cents'] | money_plain }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="receipt-totals">
+            <div class="receipt-total-row grand">
+                <span>Total</span><span>{{ sale['total_cents'] | money }}</span>
+            </div>
+            <div class="receipt-total-row">
+                <span>Paid ({{ sale['payment_method'] }})</span>
+                <span>{{ sale['amount_paid_cents'] | money }}</span>
+            </div>
+            {% if sale['change_cents'] %}
+            <div class="receipt-total-row">
+                <span>Change</span><span>{{ sale['change_cents'] | money }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <p class="receipt-footer">
+            Goods can be returned within 7 days with this receipt.<br>
+            Thank you.
+        </p>
+    </div>
+
+    <div class="receipt-actions no-print">
+        <button onclick="window.print()" class="btn-primary">Print</button>
+        <a class="btn-secondary" href="{{ url_for('sell.screen') }}">Back to the till</a>
+
+        {% if sale['status'] != 'voided' %}
+        <a class="btn-secondary" href="{{ url_for('sell.refund', sale_id=sale['id']) }}">Return items</a>
+
+        {% if current_user['role'] == 'admin' %}
+        <form method="POST" action="{{ url_for('sell.void', sale_id=sale['id']) }}"
+              class="void-form"
+              onsubmit="return confirm('Void this whole sale and put the stock back?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="reason" placeholder="Reason for voiding" required>
+            <button type="submit" class="btn-danger">Void sale</button>
+        </form>
+        {% endif %}
+        {% endif %}
+    </div>
+
+</div>
+
+{% if print_mode %}
+<script>window.addEventListener('load', () => window.print());</script>
+{% endif %}
+{% endblock %}

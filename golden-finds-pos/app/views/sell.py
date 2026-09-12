@@ -1,0 +1,184 @@
+"""
+The till: sell screen, receipts, sales history, voids and returns.
+"""
+
+from flask import (
+    Blueprint, abort, flash, redirect, render_template, request, url_for
+)
+
+from ..db import transaction
+from ..security import admin_required, current_user, login_required
+from ..services import customers, sales, users
+from ..services.sales import SaleError
+
+bp = Blueprint("sell", __name__)
+
+
+@bp.get("/sell")
+@login_required
+def screen():
+    return render_template("sell.html")
+
+
+@bp.get("/receipt/<int:sale_id>")
+@login_required
+def receipt(sale_id):
+    sale = sales.get_sale(sale_id)
+    if sale is None:
+        abort(404)
+    return render_template(
+        "receipt.html",
+        sale=sale,
+        items=sales.get_sale_items(sale_id),
+        # Printed straight from the browser; the stylesheet strips the
+        # page chrome so a thermal printer gets just the receipt.
+        print_mode=request.args.get("print") == "1",
+    )
+
+
+@bp.get("/sales")
+@login_required
+def history():
+    user = current_user()
+    # A cashier sees their own sales; the owner sees everyone's.
+    cashier_id = request.args.get("cashier_id", type=int)
+    if user["role"] != "admin":
+        cashier_id = user["id"]
+
+    return render_template(
+        "sales_history.html",
+        sales=sales.list_sales(
+            date_from=request.args.get("from") or None,
+            date_to=request.args.get("to") or None,
+            cashier_id=cashier_id,
+            search=request.args.get("q") or None,
+            limit=100,
+        ),
+        cashiers=users.list_users() if user["role"] == "admin" else [],
+        filters=request.args,
+        is_admin=user["role"] == "admin",
+    )
+
+
+@bp.post("/sales/<int:sale_id>/void")
+@admin_required
+def void(sale_id):
+    """
+    Voiding reverses money and stock, so it is the owner's to do - a
+    cashier who can void their own sales can take cash out of the drawer
+    and erase the evidence.
+    """
+    try:
+        with transaction() as conn:
+            sales.void_sale(
+                conn, sale_id,
+                voided_by=current_user()["id"],
+                reason=request.form.get("reason", ""),
+            )
+    except SaleError as err:
+        flash(str(err), "error")
+        return redirect(url_for("sell.receipt", sale_id=sale_id))
+
+    flash("Sale voided and stock returned.", "success")
+    return redirect(url_for("sell.receipt", sale_id=sale_id))
+
+
+@bp.route("/sales/<int:sale_id>/return", methods=["GET", "POST"])
+@login_required
+def refund(sale_id):
+    sale = sales.get_sale(sale_id)
+    if sale is None:
+        abort(404)
+
+    if request.method == "GET":
+        return render_template(
+            "return.html", sale=sale, items=sales.get_sale_items(sale_id)
+        )
+
+    try:
+        with transaction() as conn:
+            refunded = sales.record_return(
+                conn,
+                sale_id=sale_id,
+                product_id=request.form.get("product_id", type=int),
+                quantity=request.form.get("quantity", type=int) or 0,
+                reason=request.form.get("reason", "").strip(),
+                restocked=request.form.get("restocked") == "yes",
+                created_by=current_user()["id"],
+            )
+    except SaleError as err:
+        flash(str(err), "error")
+        return redirect(url_for("sell.refund", sale_id=sale_id))
+
+    flash(f"Refunded {refunded / 100:,.2f}.", "success")
+    return redirect(url_for("sell.receipt", sale_id=sale_id))
+
+
+@bp.get("/customers")
+@login_required
+def customer_list():
+    return render_template("customers.html", customers=customers.list_customers())
+
+
+@bp.post("/customers")
+@login_required
+def customer_create():
+    from ..money import MoneyError, parse_money
+    from ..services.customers import CustomerError
+
+    try:
+        limit_raw = request.form.get("credit_limit", "").strip()
+        limit_cents = parse_money(limit_raw, field="Credit limit",
+                                  allow_zero=True) if limit_raw else 0
+        with transaction() as conn:
+            customers.create(
+                conn,
+                name=request.form.get("name", ""),
+                phone=request.form.get("phone", ""),
+                is_wholesale=request.form.get("is_wholesale") == "on",
+                credit_limit_cents=limit_cents,
+                created_by=current_user()["id"],
+            )
+    except (CustomerError, MoneyError) as err:
+        flash(str(err), "error")
+        return redirect(url_for("sell.customer_list"))
+
+    flash("Customer added.", "success")
+    return redirect(url_for("sell.customer_list"))
+
+
+@bp.get("/customers/<int:customer_id>")
+@login_required
+def customer_detail(customer_id):
+    customer = customers.get(customer_id)
+    if customer is None:
+        abort(404)
+    return render_template(
+        "customer_detail.html",
+        customer=customer,
+        entries=customers.statement(customer_id),
+    )
+
+
+@bp.post("/customers/<int:customer_id>/pay")
+@login_required
+def customer_pay(customer_id):
+    from ..money import MoneyError, parse_money
+    from ..services.customers import CustomerError
+
+    try:
+        amount = parse_money(request.form.get("amount"), field="Payment")
+        with transaction() as conn:
+            customers.record_payment(
+                conn,
+                customer_id=customer_id,
+                amount_cents=amount,
+                method=request.form.get("method", "cash"),
+                created_by=current_user()["id"],
+            )
+    except (CustomerError, MoneyError) as err:
+        flash(str(err), "error")
+        return redirect(url_for("sell.customer_detail", customer_id=customer_id))
+
+    flash("Payment recorded.", "success")
+    return redirect(url_for("sell.customer_detail", customer_id=customer_id))

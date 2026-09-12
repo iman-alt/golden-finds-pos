@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Daily report - {{ day }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Day's close</h1>
+        <p class="page-subtitle">{{ day }}{{ ' (today)' if is_today }}</p>
+    </div>
+    <div class="date-nav">
+        <a class="btn-secondary" href="{{ url_for('reports.index', date=yesterday) }}">&larr; {{ yesterday }}</a>
+        {% if not is_today %}
+        <a class="btn-secondary" href="{{ url_for('reports.index', date=tomorrow) }}">{{ tomorrow }} &rarr;</a>
+        {% endif %}
+        <a class="btn-primary" href="{{ url_for('reports.daily_csv', date=day) }}">Download CSV</a>
+    </div>
+</div>
+
+<div class="stat-row">
+    <div class="stat-card">
+        <p class="stat-label">Net takings</p>
+        <p class="stat-value">{{ summary.net_revenue_cents | money }}</p>
+        <p class="stat-detail">
+            {{ summary.sale_count }} sales &middot; {{ summary.units_sold }} units
+        </p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Profit</p>
+        <p class="stat-value {{ 'negative' if summary.profit_cents < 0 }}">
+            {{ summary.profit_cents | money }}
+        </p>
+        <p class="stat-detail">cost of goods {{ summary.cost_cents | money }}</p>
+    </div>
+    <div class="stat-card highlight">
+        <p class="stat-label">Cash that should be in the drawer</p>
+        <p class="stat-value">{{ summary.expected_cash_cents | money }}</p>
+        <p class="stat-detail">count the drawer against this</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Not cash</p>
+        <p class="stat-value">{{ (summary.mpesa_cents + summary.credit_cents) | money }}</p>
+        <p class="stat-detail">
+            M-Pesa {{ summary.mpesa_cents | money }} &middot;
+            on credit {{ summary.credit_cents | money }}
+        </p>
+    </div>
+</div>
+
+{% if summary.refunded_cents or summary.void_count %}
+<div class="banner banner-warn">
+    {% if summary.return_count %}
+    {{ summary.return_count }} return{{ '' if summary.return_count == 1 else 's' }}
+    totalling {{ summary.refunded_cents | money }}.
+    {% endif %}
+    {% if summary.void_count %}
+    {{ summary.void_count }} sale{{ '' if summary.void_count == 1 else 's' }}
+    voided ({{ summary.voided_cents | money }}) &mdash;
+    <a href="{{ url_for('admin.audit_log', action='sale_voided') }}">see who and why</a>.
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="two-col">
+
+    <section class="dash-panel">
+        <h2>By cashier</h2>
+        {% if by_cashier %}
+        <table class="data-table">
+            <thead><tr><th>Cashier</th><th class="num">Sales</th><th class="num">Takings</th></tr></thead>
+            <tbody>
+            {% for row in by_cashier %}
+                <tr>
+                    <td>{{ row['name'] }}</td>
+                    <td class="num">{{ row['sale_count'] }}</td>
+                    <td class="num">{{ row['revenue_cents'] | money_plain }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-msg">No sales on this day.</p>
+        {% endif %}
+    </section>
+
+    <section class="dash-panel">
+        <h2>Best sellers</h2>
+        {% if top %}
+        <table class="data-table">
+            <thead>
+                <tr><th>Product</th><th class="num">Units</th><th class="num">Takings</th><th class="num">Profit</th></tr>
+            </thead>
+            <tbody>
+            {% for row in top %}
+                <tr>
+                    <td>{{ row['name'] }}</td>
+                    <td class="num">{{ row['units_sold'] }}</td>
+                    <td class="num">{{ row['revenue_cents'] | money_plain }}</td>
+                    <td class="num {{ 'negative' if row['profit_cents'] < 0 }}">
+                        {{ row['profit_cents'] | money_plain }}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-msg">Nothing sold on this day.</p>
+        {% endif %}
+    </section>
+
+</div>
+{% endblock %}

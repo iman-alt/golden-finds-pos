@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Staff - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Staff</h1>
+
+<div class="two-col">
+
+    <section class="dash-panel">
+        <h2>Accounts</h2>
+        <table class="data-table">
+            <thead>
+                <tr><th>Name</th><th>Role</th><th>Last signed in</th><th></th></tr>
+            </thead>
+            <tbody>
+            {% for person in staff %}
+                <tr class="{{ 'row-inactive' if not person['active'] }}">
+                    <td>
+                        {{ person['name'] }}
+                        {% if not person['active'] %}
+                        <span class="chip chip-muted">deactivated</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" class="inline-form"
+                              action="{{ url_for('admin.staff_set_role', user_id=person['id']) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <select name="role" onchange="this.form.submit()">
+                                <option value="cashier" {{ 'selected' if person['role'] == 'cashier' }}>Cashier</option>
+                                <option value="admin" {{ 'selected' if person['role'] == 'admin' }}>Owner</option>
+                            </select>
+                        </form>
+                    </td>
+                    <td>{{ person['last_login'] or 'never' }}</td>
+                    <td class="row-actions">
+                        <form method="POST" class="inline-form"
+                              action="{{ url_for('admin.staff_set_active', user_id=person['id']) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="active" value="{{ 0 if person['active'] else 1 }}">
+                            <button type="submit" class="btn-link">
+                                {{ 'Deactivate' if person['active'] else 'Reactivate' }}
+                            </button>
+                        </form>
+
+                        <form method="POST" class="inline-form"
+                              action="{{ url_for('admin.staff_reset_pin', user_id=person['id']) }}"
+                              onsubmit="return confirm('Reset this PIN?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="password" name="pin" placeholder="New PIN"
+                                   inputmode="numeric" required class="pin-input">
+                            <button type="submit" class="btn-link">Reset PIN</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <p class="form-note">
+            Accounts are never deleted, only deactivated &mdash; their past
+            sales still need a name against them.
+        </p>
+    </section>
+
+    <section class="dash-panel">
+        <h2>Add a staff member</h2>
+        <form method="POST" action="{{ url_for('admin.staff_create') }}" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required>
+
+            <label for="pin">Starting PIN (4-12 digits)</label>
+            <input type="password" id="pin" name="pin" inputmode="numeric" required>
+            <p class="field-hint">Tell them to change it once they sign in.</p>
+
+            <label for="role">Role</label>
+            <select id="role" name="role">
+                <option value="cashier">Cashier &mdash; till, stock in, their own sales</option>
+                <option value="admin">Owner &mdash; everything, including takings and prices</option>
+            </select>
+
+            <button type="submit" class="btn-primary">Add staff member</button>
+        </form>
+    </section>
+
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Sign in - {{ shop_name }}{% endblock %}
+{% block main_class %}centered{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <h1 class="auth-brand">🛒 {{ shop_name }}</h1>
+    <p class="auth-subtitle">Sign in to open the till</p>
+
+    {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+    <form method="POST" action="{{ url_for('auth.login') }}" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+
+        <label for="name">Who are you?</label>
+        {# A list of names rather than a free-text box: faster at a counter,
+           and it never becomes a way to probe for valid accounts because
+           the list is only shown to someone already at the machine. #}
+        <div class="name-grid">
+            {% for person in names %}
+            <button type="button" class="name-chip {{ 'selected' if person['name'] == name }}"
+                    data-name="{{ person['name'] }}">{{ person['name'] }}</button>
+            {% endfor %}
+        </div>
+        <input type="text" id="name" name="name" value="{{ name or '' }}"
+               placeholder="Your name" required>
+
+        <label for="pin">PIN</label>
+        <input type="password" id="pin" name="pin" inputmode="numeric"
+               pattern="[0-9]*" placeholder="••••" required autofocus>
+
+        <button type="submit" class="btn-primary btn-block">Sign in</button>
+    </form>
+</div>
+
+<script>
+    // Tapping a name fills the box and jumps to the PIN, so signing in is
+    // two taps and four digits.
+    document.querySelectorAll('.name-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.getElementById('name').value = chip.dataset.name;
+            document.querySelectorAll('.name-chip').forEach(c => c.classList.remove('selected'));
+            chip.classList.add('selected');
+            document.getElementById('pin').focus();
+        });
+    });
+</script>
+{% endblock %}

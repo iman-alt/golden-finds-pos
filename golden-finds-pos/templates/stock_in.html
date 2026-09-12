@@ -1,31 +1,42 @@
 {% extends "base.html" %}
-{% block title %}Stock In - Golden Finds{% endblock %}
+{% block title %}Stock in - {{ shop_name }}{% endblock %}
 
 {% block content %}
 <div class="form-card">
-    <h2>Stock In</h2>
-    <p class="form-subtitle">Scan a product to add newly received stock.</p>
+    <h2>Stock in</h2>
+    <p class="form-subtitle">Scan a product to record newly delivered stock.</p>
 
-    <input type="text" id="scanner-input" autofocus placeholder="Scan barcode...">
-    <div id="scan-message" class="scan-message"></div>
+    <input type="text" id="scanner-input" autofocus autocomplete="off"
+           value="{{ barcode }}" placeholder="Scan a barcode...">
+    <div id="scan-message" class="scan-message" role="status" aria-live="polite"></div>
 
-    <div id="stock-in-form" style="display:none; margin-top: 18px;">
-        <p id="product-name" style="font-weight:600; font-size:18px; color:#d6336c;"></p>
+    <div id="stock-in-form" hidden>
+        <p id="product-name" class="stock-in-product"></p>
 
-        <label>Quantity received</label>
-        <input type="number" id="quantity" min="1" required>
+        <label for="quantity">Quantity received</label>
+        <input type="number" id="quantity" min="1" inputmode="numeric" required>
 
-        <label>Cost price per unit (KSh)</label>
-        <input type="number" id="cost-price" step="0.01" required>
+        <label for="cost-price">Cost price per unit (KSh)</label>
+        <input type="number" id="cost-price" step="0.01" min="0" inputmode="decimal" required>
+        <p class="field-hint" id="cost-hint"></p>
 
-        <div id="expiry-field" style="display:none;">
-            <label>Expiry date</label>
+        <div id="expiry-field" hidden>
+            <label for="expiry-date">Expiry date</label>
             <input type="date" id="expiry-date">
+            <p class="field-hint">
+                This becomes its own batch and will be sold before any
+                later-expiring stock.
+            </p>
         </div>
 
-        <button id="submit-stock-in" class="btn-checkout">Add Stock</button>
+        <label for="batch-number">Batch or invoice number (optional)</label>
+        <input type="text" id="batch-number" autocomplete="off">
+
+        <button id="submit-stock-in" class="btn-primary">Add stock</button>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script src="{{ url_for('static', filename='stock_in.js') }}"></script>
 {% endblock %}

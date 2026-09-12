@@ -1,39 +1,85 @@
 {% extends "base.html" %}
-{% block title %}Sell - Golden Finds{% endblock %}
+{% block title %}Sell - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
 
 {% block content %}
 <div class="sell-layout">
 
     <div class="scan-panel">
-        <input type="text" id="scanner-input" autofocus
-               placeholder="Scan barcode or type a product name...">
+        <label class="scan-label" for="scanner-input">Scan or search</label>
+        <input type="text" id="scanner-input" autofocus autocomplete="off"
+               placeholder="Scan a barcode, or type a name...">
         <div id="search-results" class="search-results"></div>
-        <div id="scan-message" class="scan-message"></div>
+        <div id="scan-message" class="scan-message" role="status" aria-live="polite"></div>
+
+        <div class="scan-hint">
+            <kbd>Enter</kbd> adds the scanned item &middot;
+            <kbd>F2</kbd> jumps to payment &middot;
+            <kbd>Esc</kbd> clears the box
+        </div>
     </div>
 
     <div class="cart-panel">
-        <h2>Cart</h2>
-        <div id="cart-items" class="cart-items">
-            <p class="empty-cart-msg">No items yet - scan something!</p>
+        <div class="panel-head">
+            <h2>Cart</h2>
+            <button id="clear-cart" class="btn-link" hidden>Clear</button>
         </div>
+
+        <div id="cart-items" class="cart-items"></div>
 
         <div class="cart-footer">
             <div class="cart-total-row">
                 <span>Total</span>
-                <span id="cart-total">KSh 0</span>
+                <span id="cart-total">{{ 0 | money }}</span>
             </div>
 
+            <label for="payment-method">Payment</label>
             <select id="payment-method">
                 <option value="cash">Cash</option>
                 <option value="mpesa">M-Pesa</option>
                 <option value="credit">Credit (customer account)</option>
             </select>
 
-            <button id="checkout-btn" class="btn-checkout">Complete Sale</button>
+            {# Cash tendered, so the screen can work out the change. The
+               original had no way to record this at all. #}
+            <div id="cash-row">
+                <label for="amount-paid">Cash given</label>
+                <input type="number" id="amount-paid" step="0.01" min="0"
+                       inputmode="decimal" placeholder="Leave blank for exact">
+                <p id="change-due" class="change-due" hidden></p>
+            </div>
+
+            <div id="customer-row" hidden>
+                <label for="customer-search">Customer account</label>
+                <input type="text" id="customer-search" autocomplete="off"
+                       placeholder="Search name or phone...">
+                <div id="customer-results" class="search-results"></div>
+                <p id="customer-chosen" class="customer-chosen" hidden></p>
+            </div>
+
+            <button id="checkout-btn" class="btn-primary btn-block" disabled>
+                Complete sale
+            </button>
         </div>
     </div>
 
 </div>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+{# Shown after a sale so the cashier can hand over change and print. #}
+<div id="sale-done" class="modal" hidden>
+    <div class="modal-card">
+        <p class="modal-tick">✓</p>
+        <h2 id="done-title">Sale complete</h2>
+        <p class="modal-receipt" id="done-receipt"></p>
+        <p class="modal-change" id="done-change" hidden></p>
+        <div class="modal-actions">
+            <a id="done-print" class="btn-secondary" target="_blank" rel="noopener">Print receipt</a>
+            <button id="done-next" class="btn-primary">Next customer</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='sell.js') }}"></script>
 {% endblock %}
