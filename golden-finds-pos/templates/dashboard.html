@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Golden Finds{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Dashboard</h1>
+
+<div class="dashboard-grid">
+
+    <section class="dash-panel">
+        <h2>Low Stock</h2>
+        {% if low_stock %}
+        <ul class="alert-list">
+            {% for p in low_stock %}
+            <li class="alert-row">
+                <span>{{ p.name }}</span>
+                <span class="alert-badge low-stock-badge">{{ p.stock_quantity }} left</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-msg">Nothing low on stock right now.</p>
+        {% endif %}
+    </section>
+
+    <section class="dash-panel">
+        <h2>Nearing Expiry</h2>
+        {% if expiry_alerts %}
+        <div class="expiry-list">
+            {% for a in expiry_alerts %}
+            <div class="expiry-card tier-{{ a.tier }}" data-product-id="{{ a.product_id }}"
+                 data-batch-id="{{ a.batch_id }}" data-retail-price="{{ a.retail_price }}"
+                 data-tier="{{ a.tier }}">
+                <div class="expiry-card-top">
+                    <div>
+                        <p class="expiry-product-name">{{ a.product_name }}</p>
+                        <p class="expiry-detail">
+                            {{ a.quantity_remaining }} left &middot;
+                            {% if a.days_left < 0 %}Expired
+                            {% else %}Expires in {{ a.days_left }} day{{ 's' if a.days_left != 1 else '' }}{% endif %}
+                        </p>
+                    </div>
+                    <span class="tier-badge tier-badge-{{ a.tier }}">{{ a.tier.replace('_', ' ') }}</span>
+                </div>
+
+                <button class="btn-put-on-offer">Put on offer</button>
+
+                <div class="offer-picker" style="display:none;">
+                    <p class="offer-picker-label">Choose the new price</p>
+                    <div class="offer-options"></div>
+                    <div class="offer-custom-row">
+                        <input type="number" step="0.01" class="offer-custom-price" placeholder="Custom price (KSh)">
+                    </div>
+                    <p class="offer-error" style="display:none;">Pick or enter a price first.</p>
+                    <button class="btn-confirm-offer">Confirm offer</button>
+                </div>
+                <p class="offer-success" style="display:none;">Offer active - cashiers can now apply it.</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-msg">Nothing nearing expiry right now.</p>
+        {% endif %}
+    </section>
+
+</div>
+
+<p class="dash-links">
+    <a href="/sell">Go to Sell &rarr;</a> &nbsp;|&nbsp;
+    <a href="/stock-in">Go to Stock In &rarr;</a>
+</p>
+
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endblock %}

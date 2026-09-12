@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Sell - Golden Finds{% endblock %}
+
+{% block content %}
+<div class="sell-layout">
+
+    <div class="scan-panel">
+        <input type="text" id="scanner-input" autofocus
+               placeholder="Scan barcode or type a product name...">
+        <div id="search-results" class="search-results"></div>
+        <div id="scan-message" class="scan-message"></div>
+    </div>
+
+    <div class="cart-panel">
+        <h2>Cart</h2>
+        <div id="cart-items" class="cart-items">
+            <p class="empty-cart-msg">No items yet - scan something!</p>
+        </div>
+
+        <div class="cart-footer">
+            <div class="cart-total-row">
+                <span>Total</span>
+                <span id="cart-total">KSh 0</span>
+            </div>
+
+            <select id="payment-method">
+                <option value="cash">Cash</option>
+                <option value="mpesa">M-Pesa</option>
+                <option value="credit">Credit (customer account)</option>
+            </select>
+
+            <button id="checkout-btn" class="btn-checkout">Complete Sale</button>
+        </div>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}
