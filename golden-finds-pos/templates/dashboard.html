@@ -1,92 +1,161 @@
 {% extends "base.html" %}
-{% block title %}Dashboard - {{ shop_name }}{% endblock %}
+{% block title %}Home - {{ shop_name }}{% endblock %}
 
 {% block content %}
-<div class="page-head">
-    <h1 class="page-title">Dashboard</h1>
-    <a class="btn-primary" href="{{ url_for('sell.screen') }}">Open the till &rarr;</a>
-</div>
 
 {% if is_admin %}
-{# ---- The owner's numbers for today ---- #}
-<div class="stat-row">
-    <div class="stat-card">
-        <p class="stat-label">Today's takings</p>
-        <p class="stat-value">{{ today.net_revenue_cents | money }}</p>
-        <p class="stat-detail">{{ today.sale_count }} sale{{ '' if today.sale_count == 1 else 's' }}</p>
+{# ================================================================ OWNER #}
+<section class="hero">
+    <div>
+        <p class="hero-date">{{ today_label }}</p>
+        <h1>{{ greeting }}, {{ current_user['name'] }} ✨</h1>
+        <p class="hero-line">
+            {% if today.sale_count %}
+            Customers have paid <strong>{{ today.net_revenue_cents | money }}</strong>
+            across {{ today.sale_count }} sale{{ '' if today.sale_count == 1 else 's' }} today,
+            and <strong>{{ today.profit_cents | money }}</strong> of that is yours to keep.
+            {% else %}
+            No sales yet today. The till is open and ready when the first customer walks in.
+            {% endif %}
+        </p>
+        <div class="hero-actions">
+            <a class="btn-primary" href="{{ url_for('sell.screen') }}">🛒 Open the till</a>
+            <a class="btn-secondary" href="{{ url_for('inventory.stock_in_screen') }}">📦 Stock in</a>
+            <a class="btn-secondary" href="{{ url_for('reports.index') }}">📊 Close the day</a>
+        </div>
     </div>
-    <div class="stat-card">
+    <svg class="hero-art" viewBox="0 0 200 170" aria-hidden="true">
+        <ellipse cx="100" cy="160" rx="70" ry="7" fill="#000" opacity=".18"/>
+        <g class="bob">
+            <path d="M40 62h120l-12 82a12 12 0 0 1-12 10H64a12 12 0 0 1-12-10z" fill="#f6c95c"/>
+            <path d="M40 62h120l-3 12H43z" fill="#e0a02a"/>
+            <path d="M70 62c0-24 13-40 30-40s30 16 30 40" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+            <circle cx="100" cy="104" r="16" fill="#fff"/>
+            <path d="M100 94l6 10-6 11-6-11z" fill="#e0725a"/>
+        </g>
+        <g class="bob2">
+            <circle cx="164" cy="40" r="15" fill="#fff" opacity=".9"/>
+            <text x="164" y="46" text-anchor="middle" font-size="17">🪙</text>
+        </g>
+        <text x="22" y="46" font-size="22" class="bob2">✨</text>
+    </svg>
+</section>
+
+<div class="stat-row">
+    <div class="stat-card accent-plum">
+        <span class="stat-ico">💰</span>
+        <p class="stat-label">Money in today</p>
+        <p class="stat-value">{{ today.net_revenue_cents | money }}</p>
+        <p class="stat-detail">everything customers paid, after any refunds</p>
+    </div>
+    <div class="stat-card accent-sage">
+        <span class="stat-ico">🌱</span>
         <p class="stat-label">Profit today</p>
         <p class="stat-value {{ 'negative' if today.profit_cents < 0 }}">{{ today.profit_cents | money }}</p>
-        <p class="stat-detail">after {{ today.cost_cents | money }} cost of goods</p>
+        <p class="stat-detail">after paying {{ today.cost_cents | money }} for the goods sold</p>
     </div>
-    <div class="stat-card">
+    <div class="stat-card highlight">
+        <span class="stat-ico">💵</span>
         <p class="stat-label">Cash in drawer</p>
         <p class="stat-value">{{ today.cash_cents | money }}</p>
-        <p class="stat-detail">
-            plus M-Pesa {{ today.mpesa_cents | money }}
-        </p>
+        <p class="stat-detail">📱 plus {{ today.mpesa_cents | money }} on M-Pesa</p>
     </div>
-    <div class="stat-card">
-        <p class="stat-label">Stock on hand</p>
+    <div class="stat-card accent-sky">
+        <span class="stat-ico">📦</span>
+        <p class="stat-label">Stock on the shelves</p>
         <p class="stat-value">{{ inventory.cost_cents | money }}</p>
-        <p class="stat-detail">worth {{ inventory.retail_cents | money }} at retail</p>
+        <p class="stat-detail">sells for {{ inventory.retail_cents | money }}</p>
     </div>
 </div>
 
 {% if backup_warning %}
 <div class="banner banner-warn">
-    <strong>Backup:</strong> {{ backup_warning }}
-    Everything this shop knows sits in one file &mdash; if this machine is
-    lost, so is all of it. See <code>docs/BACKUP.md</code> for the
-    scheduled-task setup.
+    <div>
+        <strong>Backup:</strong> {{ backup_warning }}
+        Everything this shop knows sits in one file &mdash; if this computer is
+        lost, so is all of it. See <code>docs/BACKUP.md</code> to set it up.
+    </div>
 </div>
 {% endif %}
 
 {% if discrepancies %}
-{# Silent stock drift was one of the original bugs. If it ever happens
-   again, the owner is told rather than finding out at stock-take. #}
 <div class="banner banner-error">
-    <strong>Stock needs checking.</strong>
-    {{ discrepancies | length }} product(s) have a stock level that disagrees
-    with the movement history:
-    {% for row in discrepancies[:5] %}
-        <a href="{{ url_for('inventory.adjust_stock', product_id=row['id']) }}">{{ row['name'] }}</a>{{ ', ' if not loop.last }}
-    {% endfor %}
+    <div>
+        <strong>Stock needs checking.</strong>
+        {{ discrepancies | length }} product(s) have a stock count that doesn't match their history:
+        {% for row in discrepancies[:5] %}
+            <a href="{{ url_for('inventory.adjust_stock', product_id=row['id']) }}">{{ row['name'] }}</a>{{ ', ' if not loop.last }}
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
+
+{% else %}
+{# ============================================================ SHOPKEEPER #}
+<section class="hero">
+    <div>
+        <p class="hero-date">{{ today_label }}</p>
+        <h1>Karibu, {{ current_user['name'] }} 👋</h1>
+        <p class="hero-line">
+            {% if shift.sale_count %}
+            You've served <strong>{{ shift.sale_count }} customer{{ '' if shift.sale_count == 1 else 's' }}</strong>
+            so far today. Keep it going!
+            {% else %}
+            Your shift is ready. Scan the first item whenever a customer comes to the counter.
+            {% endif %}
+        </p>
+        <div class="hero-actions">
+            <a class="btn-primary" href="{{ url_for('sell.screen') }}">🛒 Start selling</a>
+            <a class="btn-secondary" href="{{ url_for('sell.my_day') }}">☀️ My day</a>
+        </div>
+    </div>
+    <svg class="hero-art" viewBox="0 0 200 170" aria-hidden="true">
+        <ellipse cx="100" cy="160" rx="66" ry="7" fill="#000" opacity=".18"/>
+        <g class="bob">
+            <rect x="46" y="70" width="108" height="78" rx="14" fill="#f6c95c"/>
+            <rect x="58" y="84" width="84" height="26" rx="7" fill="#34203f"/>
+            <text x="100" y="103" text-anchor="middle" font-size="15" font-weight="800" fill="#f6c95c" font-family="system-ui">KSh</text>
+            <g fill="#fff" opacity=".9">
+                <rect x="60" y="118" width="18" height="10" rx="3"/><rect x="91" y="118" width="18" height="10" rx="3"/><rect x="122" y="118" width="18" height="10" rx="3"/>
+                <rect x="60" y="132" width="18" height="10" rx="3"/><rect x="91" y="132" width="18" height="10" rx="3"/><rect x="122" y="132" width="18" height="10" rx="3" fill="#8fcfae"/>
+            </g>
+            <rect x="72" y="40" width="56" height="34" rx="4" fill="#fff"/>
+            <path d="M80 50h40M80 58h28M80 66h34" stroke="#c8b8d4" stroke-width="3" stroke-linecap="round"/>
+        </g>
+        <text x="160" y="44" font-size="22" class="bob2">🌟</text>
+    </svg>
+</section>
+
+<div class="stat-row">
+    <div class="stat-card accent-plum">
+        <span class="stat-ico">🧾</span>
+        <p class="stat-label">Sales rung up</p>
+        <p class="stat-value">{{ shift.sale_count }}</p>
+        <p class="stat-detail">{{ shift.units_sold }} item{{ '' if shift.units_sold == 1 else 's' }} handed over</p>
+    </div>
+    <div class="stat-card highlight">
+        <span class="stat-ico">💵</span>
+        <p class="stat-label">Cash you've taken</p>
+        <p class="stat-value">{{ shift.cash_cents | money }}</p>
+        <p class="stat-detail">hand this over at the end of the day</p>
+    </div>
+    <div class="stat-card accent-sky">
+        <span class="stat-ico">📱</span>
+        <p class="stat-label">M-Pesa</p>
+        <p class="stat-value">{{ shift.mpesa_cents | money }}</p>
+        <p class="stat-detail">paid to the till number</p>
+    </div>
+</div>
 {% endif %}
 
 <div class="dashboard-grid">
 
-    {# ---- Low stock ---- #}
-    <section class="dash-panel">
-        <div class="panel-head">
-            <h2>Low stock</h2>
-            <a class="panel-link" href="{{ url_for('inventory.product_list') }}">All products</a>
-        </div>
-
-        {% if low_stock %}
-        <ul class="alert-list">
-            {% for p in low_stock %}
-            <li class="alert-row">
-                <span class="alert-name">{{ p['name'] }}</span>
-                <span class="alert-badge {{ 'badge-empty' if p['stock_quantity'] == 0 else 'badge-low' }}">
-                    {{ 'Out of stock' if p['stock_quantity'] == 0 else p['stock_quantity'] ~ ' left' }}
-                </span>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p class="empty-msg">Nothing is running low.</p>
-        {% endif %}
-    </section>
-
-    {# ---- Expiry ---- #}
+    {# ------------------------------------------------------- expiry -- #}
     <section class="dash-panel">
         <div class="panel-head">
             <h2>
-                Nearing expiry
+                <span class="panel-ico coral">⏰</span>
+                {{ 'Nearing expiry' if is_admin else 'Sell these first' }}
                 {% if urgent_count %}<span class="count-chip">{{ urgent_count }} urgent</span>{% endif %}
             </h2>
         </div>
@@ -101,36 +170,40 @@
                  data-tier="{{ a.tier }}">
 
                 <div class="expiry-card-top">
-                    <div>
-                        <p class="expiry-product-name">{{ a.product_name }}</p>
-                        <p class="expiry-detail">
-                            {{ a.quantity_remaining }} left &middot;
-                            {% if a.days_left < 0 %}
-                                Expired {{ -a.days_left }} day{{ '' if a.days_left == -1 else 's' }} ago
-                            {% elif a.days_left == 0 %}
-                                Expires today
-                            {% else %}
-                                Expires in {{ a.days_left }} day{{ '' if a.days_left == 1 else 's' }}
-                            {% endif %}
-                            &middot; {{ a.value_at_risk_cents | money }} at risk
-                        </p>
+                    <div class="alert-name">
+                        <span class="row-ico">{{ a.icon }}</span>
+                        <div>
+                            <p class="expiry-product-name">{{ a.product_name }}</p>
+                            <p class="expiry-detail">
+                                {{ a.quantity_remaining }} left &middot; expires {{ a.expiry_date }}
+                                {% if is_admin %}&middot; {{ a.value_at_risk_cents | money }} on the shelf{% endif %}
+                            </p>
+                        </div>
                     </div>
-                    <span class="tier-badge tier-badge-{{ a.tier }}">{{ a.tier_label }}</span>
+                    <div class="days-left">
+                        {% if a.days_left < 0 %}
+                        <strong>!</strong><span>expired</span>
+                        {% elif a.days_left == 0 %}
+                        <strong>0</strong><span>today</span>
+                        {% else %}
+                        <strong>{{ a.days_left }}</strong><span>day{{ '' if a.days_left == 1 else 's' }}</span>
+                        {% endif %}
+                    </div>
                 </div>
 
+                <span class="tier-badge tier-badge-{{ a.tier }}">{{ a.tier_label }}</span>
+
                 {% if a.has_offer %}
-                <p class="offer-active-note">
-                    On offer at {{ a.offer_price_cents | money }}
-                </p>
+                <p class="offer-active-note">🏷️ On offer at {{ a.offer_price_cents | money }}</p>
                 {% elif is_admin %}
                     {% if a.tier == 'expired' %}
-                    <button class="btn-secondary btn-write-off">Write off {{ a.quantity_remaining }} units</button>
+                    <p><button class="btn-secondary btn-write-off">🗑️ Write off {{ a.quantity_remaining }} units</button></p>
                     {% else %}
-                    <button class="btn-secondary btn-put-on-offer">Put on offer</button>
+                    <p><button class="btn-secondary btn-put-on-offer">🏷️ Put on offer</button></p>
 
                     <div class="offer-picker" hidden>
                         <p class="offer-picker-label">
-                            Choose the new price - normally {{ a.retail_price_cents | money }}
+                            Choose the new price &mdash; normally {{ a.retail_price_cents | money }}
                         </p>
                         <div class="offer-options">
                             {% for s in a.suggestions %}
@@ -141,15 +214,15 @@
                             {% endfor %}
                         </div>
                         <div class="offer-custom-row">
-                            <input type="number" step="0.01" min="0" class="offer-custom-price"
-                                   placeholder="Or type a price">
+                            <input type="number" step="1" min="0" class="offer-custom-price"
+                                   placeholder="Or type your own price">
                         </div>
                         <p class="offer-error" hidden></p>
                         <button class="btn-primary btn-confirm-offer">Confirm offer</button>
                     </div>
                     {% endif %}
                 {% else %}
-                <p class="form-note">The owner decides whether this goes on offer.</p>
+                <p class="field-hint">Offer it to customers. Mum decides if it goes on sale.</p>
                 {% endif %}
 
                 <p class="offer-success" hidden></p>
@@ -157,25 +230,48 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="empty-msg">Nothing is nearing expiry.</p>
+        <p class="empty-msg">🎉 Nothing is close to expiring.
+            {% if is_admin %}Expiry dates are added at Stock in.{% endif %}</p>
         {% endif %}
     </section>
 
-    {% if is_admin and revenue_series %}
-    {# ---- Two-week trend. Bars, not a chart library - it is fourteen
-           numbers and the shop machine should not download a megabyte
-           of JavaScript to draw them. ---- #}
+    {# ---------------------------------------------------- low stock -- #}
     <section class="dash-panel">
         <div class="panel-head">
-            <h2>Last two weeks</h2>
-            <a class="panel-link" href="{{ url_for('reports.index') }}">Reports</a>
+            <h2><span class="panel-ico">📉</span> Low stock</h2>
+            <a class="panel-link" href="{{ url_for('inventory.product_list') }}">All products →</a>
         </div>
-        {% set peak = revenue_series | map(attribute='revenue_cents') | max %}
-        <div class="spark-row">
-            {% for d in revenue_series %}
-            <div class="spark-col" title="{{ d['day'] }}: {{ d['revenue_cents'] | money }}">
-                <div class="spark-bar" style="height: {{ (d['revenue_cents'] / peak * 100) | round }}%"></div>
-                <span class="spark-label">{{ d['day'][-2:] }}</span>
+
+        {% if low_stock %}
+        <ul class="alert-list">
+            {% for p in low_stock %}
+            <li class="alert-row">
+                <span class="alert-name"><span class="row-ico">{{ p['icon'] }}</span>{{ p['name'] }}</span>
+                <span class="alert-badge {{ 'badge-empty' if p['stock_quantity'] == 0 else 'badge-low' }}">
+                    {{ 'Sold out' if p['stock_quantity'] == 0 else p['stock_quantity'] ~ ' left' }}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% if not is_admin %}<p class="field-hint">Let Mum know what's running out.</p>{% endif %}
+        {% else %}
+        <p class="empty-msg">👌 The shelves are well stocked.</p>
+        {% endif %}
+    </section>
+
+    {% if is_admin %}
+    {# ------------------------------------------------------- the week -- #}
+    <section class="dash-panel">
+        <div class="panel-head">
+            <h2><span class="panel-ico plum">📈</span> This week</h2>
+            <a class="panel-link" href="{{ url_for('reports.index') }}">Reports →</a>
+        </div>
+        <div class="week-chart">
+            {% for d in week %}
+            <div class="week-col {{ 'today' if d.is_today }}" title="{{ d.date }}: {{ d.revenue_cents | money }}">
+                <span class="week-amount">{{ (d.revenue_cents / 100) | round | int if d.revenue_cents else '' }}</span>
+                <div class="week-bar" style="height: {{ [d.pct, 3] | max }}%; --i: {{ loop.index0 }}"></div>
+                <span class="week-label">{{ d.label }}</span>
             </div>
             {% endfor %}
         </div>

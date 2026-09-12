@@ -1,39 +1,144 @@
 {% extends "base.html" %}
 {% block title %}Stock in - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
 
 {% block content %}
-<div class="form-card">
-    <h2>Stock in</h2>
-    <p class="form-subtitle">Scan a product to record newly delivered stock.</p>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">📦 Stock in</h1>
+        <p class="page-subtitle">Record a delivery as it arrives. It takes a few seconds per product.</p>
+    </div>
+</div>
 
-    <input type="text" id="scanner-input" autofocus autocomplete="off"
-           value="{{ barcode }}" placeholder="Scan a barcode...">
-    <div id="scan-message" class="scan-message" role="status" aria-live="polite"></div>
+<div class="howto">
+    <div class="howto-step">
+        <span class="n">1</span><span class="emo">🔎</span>
+        <strong>Scan one pack</strong>
+        <p>Every pack of the same product has the same barcode. One scan is enough.</p>
+    </div>
+    <div class="howto-step">
+        <span class="n">2</span><span class="emo">🔢</span>
+        <strong>Type how many came</strong>
+        <p>24 bottles of Jik? Type 24. No need to scan each one.</p>
+    </div>
+    <div class="howto-step">
+        <span class="n">3</span><span class="emo">📅</span>
+        <strong>Add the expiry date</strong>
+        <p>For food and drinks. Look for "EXP" or "Best before" on the pack.</p>
+    </div>
+    <div class="howto-step">
+        <span class="n">4</span><span class="emo">✅</span>
+        <strong>Save, then check the list</strong>
+        <p>It appears under "Received today" so you know it's logged.</p>
+    </div>
+</div>
 
-    <div id="stock-in-form" hidden>
-        <p id="product-name" class="stock-in-product"></p>
+<div class="stockin">
 
-        <label for="quantity">Quantity received</label>
-        <input type="number" id="quantity" min="1" inputmode="numeric" required>
+    <section class="card till-col">
+        <header class="step-head">
+            <span class="step-num honey">1</span>
+            <div>
+                <h2>Scan the delivery</h2>
+                <p>A new barcode takes you to add the product first</p>
+            </div>
+        </header>
 
-        <label for="cost-price">Cost price per unit (KSh)</label>
-        <input type="number" id="cost-price" step="0.01" min="0" inputmode="decimal" required>
-        <p class="field-hint" id="cost-hint"></p>
+        <div class="scan-box">
+            <svg viewBox="0 0 32 32" aria-hidden="true">
+                <rect x="3" y="7" width="2" height="18" rx="1" fill="#5b3a70"/>
+                <rect x="7" y="7" width="1.2" height="18" rx=".6" fill="#5b3a70"/>
+                <rect x="10" y="7" width="3" height="18" rx="1" fill="#5b3a70"/>
+                <rect x="15" y="7" width="1.2" height="18" rx=".6" fill="#5b3a70"/>
+                <rect x="18" y="7" width="2" height="18" rx="1" fill="#5b3a70"/>
+                <rect x="22" y="7" width="1.2" height="18" rx=".6" fill="#5b3a70"/>
+                <rect x="25" y="7" width="3" height="18" rx="1" fill="#5b3a70"/>
+                <rect x="1" y="15.2" width="30" height="1.6" rx=".8" fill="#e0725a"/>
+            </svg>
+            <label for="scanner-input" class="visually-hidden">Barcode</label>
+            <input type="text" id="scanner-input" autofocus autocomplete="off"
+                   value="{{ barcode }}" placeholder="Scan a barcode…">
+        </div>
+        <span class="scan-live">Ready for the scanner</span>
+        <div id="scan-message" class="scan-message" role="status" aria-live="polite"></div>
 
-        <div id="expiry-field" hidden>
-            <label for="expiry-date">Expiry date</label>
-            <input type="date" id="expiry-date">
-            <p class="field-hint">
-                This becomes its own batch and will be sold before any
-                later-expiring stock.
+        <div id="stock-in-form" hidden>
+            <div class="stock-product">
+                <span class="spotlight-icon" id="product-icon">📦</span>
+                <div>
+                    <p class="stock-product-name" id="product-name"></p>
+                    <p class="stock-product-meta" id="product-meta"></p>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label for="quantity">How many arrived?</label>
+                    <input type="number" id="quantity" min="1" step="1" inputmode="numeric" required>
+                    <div class="quick-qty">
+                        {% for q in [1, 6, 12, 24, 48] %}
+                        <button type="button" data-qty="{{ q }}">{{ q }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <label for="cost-price">You paid per item (KSh)</label>
+                    <input type="number" id="cost-price" step="1" min="0" inputmode="numeric" required>
+                    <p class="field-hint" id="cost-hint"></p>
+                </div>
+            </div>
+
+            <div id="expiry-field" class="expiry-box" hidden>
+                <label for="expiry-date">📅 Expiry date on the pack</label>
+                <input type="date" id="expiry-date">
+                <p class="field-hint">
+                    Look for <strong>EXP</strong>, <strong>Best before</strong> or
+                    <strong>Use by</strong>. The system will warn you and the shopkeeper
+                    as the date gets close, and always sells the soonest-expiring stock first.
+                </p>
+            </div>
+
+            <p class="field-hint" id="no-expiry-hint" hidden>
+                This product isn't set to track expiry.
+                <a id="edit-product-link" href="#">Turn it on</a> if it goes off.
             </p>
+
+            <label for="batch-number">Invoice or batch number <span class="cell-sub">(optional)</span></label>
+            <input type="text" id="batch-number" autocomplete="off">
+
+            <div class="form-actions">
+                <button id="submit-stock-in" class="btn-primary btn-xl">✅ Save delivery</button>
+                <button type="button" id="cancel-stock-in" class="btn-secondary">Cancel</button>
+            </div>
         </div>
 
-        <label for="batch-number">Batch or invoice number (optional)</label>
-        <input type="text" id="batch-number" autocomplete="off">
+        <div id="stock-idle" class="scan-idle">
+            <svg viewBox="0 0 160 100" aria-hidden="true">
+                <ellipse cx="80" cy="92" rx="56" ry="6" fill="#34203f" opacity=".08"/>
+                <g class="bob">
+                    <rect x="40" y="36" width="80" height="52" rx="6" fill="#e9a92b"/>
+                    <path d="M40 36l14-16h52l14 16z" fill="#f6c95c"/>
+                    <rect x="72" y="36" width="16" height="22" fill="#fff" opacity=".85"/>
+                    <path d="M56 70h48" stroke="#c98a1c" stroke-width="4" stroke-linecap="round"/>
+                </g>
+                <text x="120" y="24" font-size="16">✨</text>
+            </svg>
+            <strong>Waiting for the first scan</strong>
+            The product and a quick form will show up here.
+        </div>
+    </section>
 
-        <button id="submit-stock-in" class="btn-primary">Add stock</button>
-    </div>
+    <section class="card till-col">
+        <header class="step-head">
+            <span class="step-num sage">✓</span>
+            <div>
+                <h2>Received today</h2>
+                <p>Everything logged in the last 24 hours</p>
+            </div>
+        </header>
+        <div id="received-log" class="received-log"></div>
+    </section>
+
 </div>
 {% endblock %}
 

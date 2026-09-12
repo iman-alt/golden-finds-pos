@@ -3,47 +3,191 @@
 {% block main_class %}centered{% endblock %}
 
 {% block content %}
-<div class="auth-card">
-    <h1 class="auth-brand">🛒 {{ shop_name }}</h1>
-    <p class="auth-subtitle">Sign in to open the till</p>
+{% set tints = [
+    'linear-gradient(135deg,#f6c95c,#e0725a)',
+    'linear-gradient(135deg,#7fb9d9,#5b8cc2)',
+    'linear-gradient(135deg,#8fcfae,#4f8f73)',
+    'linear-gradient(135deg,#c9a0dc,#5b3a70)',
+    'linear-gradient(135deg,#f3a6a0,#c86b8a)',
+] %}
+<div class="login-scene">
 
-    {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+    <section class="login-art" aria-hidden="true">
+        <span class="blob blob-1"></span>
+        <span class="blob blob-2"></span>
+        <span class="blob blob-3"></span>
 
-    <form method="POST" action="{{ url_for('auth.login') }}" autocomplete="off">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
-
-        <label for="name">Who are you?</label>
-        {# A list of names rather than a free-text box: faster at a counter,
-           and it never becomes a way to probe for valid accounts because
-           the list is only shown to someone already at the machine. #}
-        <div class="name-grid">
-            {% for person in names %}
-            <button type="button" class="name-chip {{ 'selected' if person['name'] == name }}"
-                    data-name="{{ person['name'] }}">{{ person['name'] }}</button>
-            {% endfor %}
+        <div class="floaties">
+            <span class="floaty" style="top:18%;left:62%;--r:-8deg">🧺</span>
+            <span class="floaty" style="top:36%;left:80%;--r:10deg;animation-delay:.8s;font-size:36px">🥛</span>
+            <span class="floaty" style="top:58%;left:66%;--r:-4deg;animation-delay:1.6s;font-size:50px">🍞</span>
+            <span class="floaty" style="top:74%;left:84%;--r:12deg;animation-delay:.4s;font-size:34px">🍌</span>
+            <span class="floaty" style="top:12%;left:86%;--r:6deg;animation-delay:2.2s;font-size:30px">✨</span>
+            <span class="floaty" style="top:82%;left:56%;--r:-10deg;animation-delay:1.2s;font-size:38px">🧼</span>
         </div>
-        <input type="text" id="name" name="name" value="{{ name or '' }}"
-               placeholder="Your name" required>
 
-        <label for="pin">PIN</label>
-        <input type="password" id="pin" name="pin" inputmode="numeric"
-               pattern="[0-9]*" placeholder="••••" required autofocus>
+        <div class="login-brand">
+            <svg class="brand-mark"><use href="#gf-mark"/></svg>
+            {{ shop_name }}
+        </div>
 
-        <button type="submit" class="btn-primary btn-block">Sign in</button>
-    </form>
+        <div class="login-headline">
+            <h1>Karibu.<br>Let's make today a <em>golden</em> one.</h1>
+            <p>Pick your name, tap your PIN, and the till is yours.</p>
+        </div>
+
+        <p class="login-foot">Works with or without internet &middot; every sale kept safe</p>
+    </section>
+
+    <section class="login-panel">
+        <div class="auth-card {{ 'shake' if error }}" id="auth-card">
+            <h2 id="step-title">Who's at the counter?</h2>
+            <p class="auth-subtitle" id="step-sub">Tap your name to begin.</p>
+
+            {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+            <form method="POST" action="{{ url_for('auth.login') }}" autocomplete="off" id="login-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+
+                <div class="people" id="people">
+                    {% for person in names %}
+                    <button type="button" class="person {{ 'selected' if person['name'] == name }}"
+                            data-name="{{ person['name'] }}"
+                            data-tint="{{ tints[loop.index0 % tints | length] }}"
+                            data-role="{{ 'Owner' if person['role'] == 'admin' else 'Shopkeeper' }}">
+                        <span class="avatar" style="background: {{ tints[loop.index0 % tints | length] }}">{{ person['name'][:1] | upper }}</span>
+                        {{ person['name'] }}
+                        <small>{{ 'Owner' if person['role'] == 'admin' else 'Shopkeeper' }}</small>
+                    </button>
+                    {% endfor %}
+                </div>
+
+                <details class="other-name" id="other-name">
+                    <summary>My name isn't here</summary>
+                    <label for="name">Type your name</label>
+                    <input type="text" id="name" name="name" value="{{ name or '' }}" autocomplete="off">
+                </details>
+
+                <div class="pin-step" id="pin-step" {{ '' if name else 'hidden' }}>
+                    <div class="pin-who">
+                        <span class="avatar" id="who-avatar">{{ (name or '?')[:1] | upper }}</span>
+                        <div>
+                            <strong id="who-name">{{ name or '' }}</strong><br>
+                            <button type="button" class="btn-link" id="change-person">Not you?</button>
+                        </div>
+                    </div>
+
+                    <label for="pin" class="visually-hidden">PIN</label>
+                    <input type="password" id="pin" name="pin" inputmode="numeric"
+                           pattern="[0-9]*" maxlength="12" class="visually-hidden" required>
+
+                    <div class="pin-dots" id="pin-dots" aria-hidden="true"></div>
+
+                    <div class="keypad">
+                        {% for digit in ['1','2','3','4','5','6','7','8','9'] %}
+                        <button type="button" class="key" data-key="{{ digit }}">{{ digit }}</button>
+                        {% endfor %}
+                        <button type="button" class="key key-back" data-key="back" aria-label="Delete">⌫</button>
+                        <button type="button" class="key" data-key="0">0</button>
+                        <button type="submit" class="key key-go" aria-label="Sign in">→</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
 </div>
 
 <script>
-    // Tapping a name fills the box and jumps to the PIN, so signing in is
-    // two taps and four digits.
-    document.querySelectorAll('.name-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            document.getElementById('name').value = chip.dataset.name;
-            document.querySelectorAll('.name-chip').forEach(c => c.classList.remove('selected'));
-            chip.classList.add('selected');
-            document.getElementById('pin').focus();
+(() => {
+    const nameInput = document.getElementById('name');
+    const pinInput = document.getElementById('pin');
+    const pinStep = document.getElementById('pin-step');
+    const people = document.getElementById('people');
+    const dots = document.getElementById('pin-dots');
+    const title = document.getElementById('step-title');
+    const sub = document.getElementById('step-sub');
+    const whoName = document.getElementById('who-name');
+    const whoAvatar = document.getElementById('who-avatar');
+
+    function drawDots() {
+        const slots = Math.max(4, pinInput.value.length + (pinInput.value.length < 12 ? 1 : 0));
+        dots.replaceChildren();
+        for (let i = 0; i < Math.min(slots, 12); i++) {
+            const dot = document.createElement('span');
+            dot.className = 'pin-dot' + (i < pinInput.value.length ? ' on' : '');
+            dots.appendChild(dot);
+        }
+    }
+
+    function choose(button) {
+        people.querySelectorAll('.person').forEach(p => p.classList.remove('selected'));
+        button.classList.add('selected');
+        nameInput.value = button.dataset.name;
+        whoName.textContent = button.dataset.name;
+        whoAvatar.textContent = button.dataset.name.slice(0, 1).toUpperCase();
+        whoAvatar.style.background = button.dataset.tint;
+        people.hidden = true;
+        document.getElementById('other-name').hidden = true;
+        pinStep.hidden = false;
+        title.textContent = `Hi ${button.dataset.name} 👋`;
+        sub.textContent = 'Enter your PIN.';
+        pinInput.value = '';
+        drawDots();
+        pinInput.focus();
+    }
+
+    people.querySelectorAll('.person').forEach(btn =>
+        btn.addEventListener('click', () => choose(btn)));
+
+    document.getElementById('change-person').addEventListener('click', () => {
+        people.hidden = false;
+        document.getElementById('other-name').hidden = false;
+        pinStep.hidden = true;
+        title.textContent = "Who's at the counter?";
+        sub.textContent = 'Tap your name to begin.';
+    });
+
+    nameInput.addEventListener('input', () => {
+        pinStep.hidden = !nameInput.value.trim();
+        whoName.textContent = nameInput.value;
+        whoAvatar.textContent = (nameInput.value[0] || '?').toUpperCase();
+    });
+
+    document.querySelectorAll('.key[data-key]').forEach(key => {
+        key.addEventListener('click', () => {
+            if (key.dataset.key === 'back') {
+                pinInput.value = pinInput.value.slice(0, -1);
+            } else if (pinInput.value.length < 12) {
+                pinInput.value += key.dataset.key;
+            }
+            drawDots();
         });
     });
+
+    // Typing on a real keyboard works too.
+    pinInput.addEventListener('input', () => {
+        pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 12);
+        drawDots();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (pinStep.hidden || document.activeElement === nameInput) return;
+        if (/^\d$/.test(e.key) && document.activeElement !== pinInput) {
+            pinInput.value = (pinInput.value + e.key).slice(0, 12);
+            drawDots();
+        } else if (e.key === 'Backspace' && document.activeElement !== pinInput) {
+            pinInput.value = pinInput.value.slice(0, -1);
+            drawDots();
+        }
+    });
+
+    // With only one person on the list, skip straight to their PIN.
+    const all = people.querySelectorAll('.person');
+    const preselected = people.querySelector('.person.selected');
+    if (preselected) choose(preselected);
+    else if (all.length === 1) choose(all[0]);
+
+    drawDots();
+})();
 </script>
 {% endblock %}

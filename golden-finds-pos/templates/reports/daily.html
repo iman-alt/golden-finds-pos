@@ -1,101 +1,99 @@
 {% extends "base.html" %}
-{% block title %}Daily report - {{ day }}{% endblock %}
+{% block title %}Close the day - {{ day }}{% endblock %}
 {% block main_class %}wide{% endblock %}
 
 {% block content %}
 <div class="page-head">
     <div>
-        <h1 class="page-title">Day's close</h1>
-        <p class="page-subtitle">{{ day }}{{ ' (today)' if is_today }}</p>
+        <h1 class="page-title">📊 Close the day</h1>
+        <p class="page-subtitle">{{ day.strftime('%A, %d %B %Y') }}{{ ' · today' if is_today }}</p>
     </div>
     <div class="date-nav">
-        <a class="btn-secondary" href="{{ url_for('reports.index', date=yesterday) }}">&larr; {{ yesterday }}</a>
+        <a class="btn-secondary" href="{{ url_for('reports.index', date=yesterday) }}">← Day before</a>
         {% if not is_today %}
-        <a class="btn-secondary" href="{{ url_for('reports.index', date=tomorrow) }}">{{ tomorrow }} &rarr;</a>
+        <a class="btn-secondary" href="{{ url_for('reports.index', date=tomorrow) }}">Next day →</a>
         {% endif %}
-        <a class="btn-primary" href="{{ url_for('reports.daily_csv', date=day) }}">Download CSV</a>
+        <a class="btn-plum" href="{{ url_for('reports.daily_csv', date=day) }}">⬇ Save as spreadsheet</a>
     </div>
 </div>
 
-<div class="stat-row">
-    <div class="stat-card">
-        <p class="stat-label">Today's takings</p>
-        <p class="stat-value">{{ summary.net_revenue_cents | money }}</p>
-        <p class="stat-detail">
-            {{ summary.sale_count }} sales &middot; {{ summary.units_sold }} units
+<section class="hero">
+    <div>
+        <p class="hero-date">The day in one sentence</p>
+        <h1 style="font-size:26px">
+            {% if summary.sale_count %}
+            {{ summary.sale_count }} sale{{ '' if summary.sale_count == 1 else 's' }},
+            {{ summary.units_sold }} item{{ '' if summary.units_sold == 1 else 's' }} out the door.
+            {% else %}
+            No sales on this day.
+            {% endif %}
+        </h1>
+        <p class="hero-line">
+            Customers paid <strong>{{ summary.net_revenue_cents | money }}</strong>.
+            The goods they took cost you {{ summary.cost_cents | money }},
+            so the shop made <strong>{{ summary.profit_cents | money }}</strong>.
         </p>
     </div>
-    <div class="stat-card">
+</section>
+
+<div class="stat-row">
+    <div class="stat-card accent-plum">
+        <span class="stat-ico">💰</span>
+        <p class="stat-label">Money in</p>
+        <p class="stat-value">{{ summary.net_revenue_cents | money }}</p>
+        <p class="stat-detail">everything customers paid, minus refunds</p>
+    </div>
+    <div class="stat-card accent-sage">
+        <span class="stat-ico">🌱</span>
         <p class="stat-label">Profit</p>
-        <p class="stat-value {{ 'negative' if summary.profit_cents < 0 }}">
-            {{ summary.profit_cents | money }}
-        </p>
-        <p class="stat-detail">cost of goods {{ summary.cost_cents | money }}</p>
+        <p class="stat-value {{ 'negative' if summary.profit_cents < 0 }}">{{ summary.profit_cents | money }}</p>
+        <p class="stat-detail">money in, minus what the goods cost you</p>
     </div>
     <div class="stat-card highlight">
+        <span class="stat-ico">💵</span>
         <p class="stat-label">Cash in drawer</p>
         <p class="stat-value">{{ summary.expected_cash_cents | money }}</p>
-        <p class="stat-detail">count the drawer against this</p>
+        <p class="stat-detail">count the drawer &mdash; it should match this</p>
     </div>
-    <div class="stat-card">
+    <div class="stat-card accent-sky">
+        <span class="stat-ico">📱</span>
         <p class="stat-label">M-Pesa</p>
         <p class="stat-value">{{ summary.mpesa_cents | money }}</p>
-        <p class="stat-detail">paid to the till number</p>
+        <p class="stat-detail">check it against the M-Pesa statement</p>
     </div>
 </div>
 
 {% if summary.refunded_cents or summary.void_count %}
 <div class="banner banner-warn">
-    {% if summary.return_count %}
-    {{ summary.return_count }} return{{ '' if summary.return_count == 1 else 's' }}
-    totalling {{ summary.refunded_cents | money }}.
-    {% endif %}
-    {% if summary.void_count %}
-    {{ summary.void_count }} sale{{ '' if summary.void_count == 1 else 's' }}
-    voided ({{ summary.voided_cents | money }}) &mdash;
-    <a href="{{ url_for('admin.audit_log', action='sale_voided') }}">see who and why</a>.
-    {% endif %}
+    <div>
+        {% if summary.return_count %}
+        {{ summary.return_count }} return{{ '' if summary.return_count == 1 else 's' }}
+        ({{ summary.refunded_cents | money }} given back).
+        {% endif %}
+        {% if summary.void_count %}
+        {{ summary.void_count }} sale{{ '' if summary.void_count == 1 else 's' }}
+        cancelled ({{ summary.voided_cents | money }}) &mdash;
+        <a href="{{ url_for('admin.audit_log', action='sale_voided') }}">see who and why</a>.
+        {% endif %}
+    </div>
 </div>
 {% endif %}
 
 <div class="two-col">
-
     <section class="dash-panel">
-        <h2>By cashier</h2>
-        {% if by_cashier %}
-        <table class="data-table">
-            <thead><tr><th>Cashier</th><th class="num">Sales</th><th class="num">Takings</th></tr></thead>
-            <tbody>
-            {% for row in by_cashier %}
-                <tr>
-                    <td>{{ row['name'] }}</td>
-                    <td class="num">{{ row['sale_count'] }}</td>
-                    <td class="num">{{ row['revenue_cents'] | money_plain }}</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p class="empty-msg">No sales on this day.</p>
-        {% endif %}
-    </section>
-
-    <section class="dash-panel">
-        <h2>Best sellers</h2>
+        <div class="panel-head"><h2><span class="panel-ico">🏆</span> Best sellers</h2></div>
         {% if top %}
         <table class="data-table">
             <thead>
-                <tr><th>Product</th><th class="num">Units</th><th class="num">Takings</th><th class="num">Profit</th></tr>
+                <tr><th>Product</th><th class="num">Sold</th><th class="num">Money in</th><th class="num">Profit</th></tr>
             </thead>
             <tbody>
             {% for row in top %}
                 <tr>
-                    <td>{{ row['name'] }}</td>
+                    <td><strong>{{ row['name'] }}</strong></td>
                     <td class="num">{{ row['units_sold'] }}</td>
                     <td class="num">{{ row['revenue_cents'] | money_plain }}</td>
-                    <td class="num {{ 'negative' if row['profit_cents'] < 0 }}">
-                        {{ row['profit_cents'] | money_plain }}
-                    </td>
+                    <td class="num {{ 'negative' if row['profit_cents'] < 0 }}">{{ row['profit_cents'] | money_plain }}</td>
                 </tr>
             {% endfor %}
             </tbody>
@@ -105,5 +103,23 @@
         {% endif %}
     </section>
 
+    <section class="dash-panel">
+        <div class="panel-head"><h2><span class="panel-ico sky">🧑‍💼</span> Who sold what</h2></div>
+        {% if by_cashier %}
+        <ul class="alert-list">
+            {% for row in by_cashier %}
+            <li class="alert-row">
+                <span class="alert-name">
+                    <span class="avatar" style="width:32px;height:32px;font-size:14px">{{ row['name'][:1] | upper }}</span>
+                    <span>{{ row['name'] }}<br><span class="cell-sub">{{ row['sale_count'] }} sale{{ '' if row['sale_count'] == 1 else 's' }}</span></span>
+                </span>
+                <strong>{{ row['revenue_cents'] | money }}</strong>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-msg">No sales on this day.</p>
+        {% endif %}
+    </section>
 </div>
 {% endblock %}

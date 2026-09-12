@@ -26,8 +26,8 @@
             <span>
                 {{ a.quantity_remaining }} left &middot;
                 {% if a.days_left < 0 %}expired
-                {% elif a.days_left == 0 %}today
-                {% else %}{{ a.days_left }}d{% endif %}
+                {% elif a.days_left == 0 %}expires today
+                {% else %}{{ a.days_left }} day{{ '' if a.days_left == 1 else 's' }} left{% endif %}
             </span>
             {% if a.has_offer %}
             <span class="expiry-pill-offer">on offer {{ a.offer_price_cents | money }}</span>
@@ -38,104 +38,182 @@
 </details>
 {% endif %}
 
-<div class="sell-layout">
+<div class="till">
 
-    <div class="scan-panel">
-        <label class="scan-label" for="scanner-input">Scan or search</label>
-        <input type="text" id="scanner-input" autofocus autocomplete="off"
-               placeholder="Scan a barcode, or type a name...">
+    {# ------------------------------------------------------ 1. SCAN -- #}
+    <section class="card till-col till-scan">
+        <header class="step-head">
+            <span class="step-num">1</span>
+            <div>
+                <h2>Scan</h2>
+                <p>Point the scanner at the barcode, or type a name</p>
+            </div>
+        </header>
+
+        <div class="scan-box">
+            <svg viewBox="0 0 32 32" aria-hidden="true">
+                <rect x="3" y="7" width="2" height="18" rx="1" fill="#5b3a70"/>
+                <rect x="7" y="7" width="1.2" height="18" rx=".6" fill="#5b3a70"/>
+                <rect x="10" y="7" width="3" height="18" rx="1" fill="#5b3a70"/>
+                <rect x="15" y="7" width="1.2" height="18" rx=".6" fill="#5b3a70"/>
+                <rect x="18" y="7" width="2" height="18" rx="1" fill="#5b3a70"/>
+                <rect x="22" y="7" width="1.2" height="18" rx=".6" fill="#5b3a70"/>
+                <rect x="25" y="7" width="3" height="18" rx="1" fill="#5b3a70"/>
+                <rect x="1" y="15.2" width="30" height="1.6" rx=".8" fill="#e0725a"/>
+            </svg>
+            <label for="scanner-input" class="visually-hidden">Scan or search</label>
+            <input type="text" id="scanner-input" autofocus autocomplete="off"
+                   placeholder="Scan a barcode, or type a name…">
+        </div>
+        <span class="scan-live">Ready for the scanner</span>
+
         <div id="search-results" class="search-results"></div>
         <div id="scan-message" class="scan-message" role="status" aria-live="polite"></div>
 
+        <div id="spotlight" class="spotlight" hidden>
+            <span class="spotlight-icon" id="spot-icon"></span>
+            <div>
+                <p class="spotlight-label">Just added</p>
+                <p class="spotlight-name" id="spot-name"></p>
+                <p class="spotlight-meta" id="spot-meta"></p>
+            </div>
+            <p class="spotlight-price" id="spot-price"></p>
+        </div>
+
+        <div id="scan-idle" class="scan-idle">
+            <svg viewBox="0 0 160 100" aria-hidden="true">
+                <ellipse cx="80" cy="92" rx="58" ry="6" fill="#34203f" opacity=".08"/>
+                <g class="bob">
+                    <path d="M34 40h92l-9 44a8 8 0 0 1-8 6H51a8 8 0 0 1-8-6z" fill="#e9a92b"/>
+                    <path d="M34 40h92l-2 8H36z" fill="#c98a1c"/>
+                    <path d="M58 40c0-16 10-26 22-26s22 10 22 26" fill="none" stroke="#5b3a70" stroke-width="5" stroke-linecap="round"/>
+                    <circle cx="80" cy="64" r="9" fill="#fff" opacity=".9"/>
+                    <path d="M80 58l3 6-3 6-3-6z" fill="#e0725a"/>
+                </g>
+                <text x="118" y="28" font-size="18">✨</text>
+                <text x="18" y="34" font-size="16">🥛</text>
+            </svg>
+            <strong>Ready when you are</strong>
+            Every item you scan shows up here, then in the list.
+        </div>
+
+        {# What customers usually take together. The person serving can
+           hide it for good if they would rather not see it. #}
+        <div id="pairing-strip" class="pairing-strip" hidden>
+            <div class="pairing-head">
+                <span class="pairing-title">✨ Customers often add</span>
+                <button type="button" id="pairing-hide" class="btn-link">Hide these</button>
+            </div>
+            <div id="pairing-list" class="pairing-list"></div>
+        </div>
+
         <div class="scan-hint">
-            <kbd>Enter</kbd> adds the scanned item &middot;
-            <kbd>F2</kbd> jumps to payment &middot;
+            <kbd>Enter</kbd> adds the item &nbsp;·&nbsp;
+            <kbd>F2</kbd> jumps to money received &nbsp;·&nbsp;
             <kbd>Esc</kbd> clears the box
         </div>
-    </div>
+    </section>
 
-    {# What customers usually take together, from this shop's own
-       receipts. A prompt to offer, never an instruction - and the person
-       serving can hide it for good if they would rather not see it. #}
-    <div id="pairing-strip" class="pairing-strip" hidden>
-        <div class="pairing-head">
-            <span class="pairing-title">Often bought with this</span>
-            <button type="button" id="pairing-hide" class="btn-link">Hide these</button>
+    {# ----------------------------------------------------- 2. ITEMS -- #}
+    <section class="card till-col till-items">
+        <header class="step-head">
+            <span class="step-num honey">2</span>
+            <div>
+                <h2>Items</h2>
+                <p>Each item and its price, as you scan</p>
+            </div>
+            <span class="spacer"></span>
+            <button id="clear-cart" class="btn-link" hidden>Clear all</button>
+        </header>
+
+        <div id="cart-items" class="receipt-lines"></div>
+
+        <div class="receipt-total">
+            <span>
+                Total to pay
+                <span class="items-count" id="item-count">No items yet</span>
+            </span>
+            <span id="cart-total">KSh 0</span>
         </div>
-        <div id="pairing-list" class="pairing-list"></div>
-    </div>
+    </section>
 
-    <div class="cart-panel">
-        <div class="panel-head">
-            <h2>Cart</h2>
-            <button id="clear-cart" class="btn-link" hidden>Clear</button>
+    {# --------------------------------------------------- 3. PAYMENT -- #}
+    <section class="card till-col till-pay">
+        <header class="step-head">
+            <span class="step-num sage">3</span>
+            <div>
+                <h2>Payment</h2>
+                <p>How is the customer paying?</p>
+            </div>
+        </header>
+
+        <div class="pay-toggle" role="group" aria-label="Payment method">
+            <button type="button" class="pay-option selected" data-method="cash">💵 Cash</button>
+            <button type="button" class="pay-option" data-method="mpesa">📱 M-Pesa</button>
         </div>
 
-        <div id="cart-items" class="cart-items"></div>
+        <div id="cash-row">
+            <p class="pay-section-label">Money received</p>
 
-        <div class="cart-footer">
-            <div class="cart-total-row">
-                <span>Total</span>
-                <span id="cart-total">{{ 0 | money }}</span>
+            <div class="received-display">
+                <span class="currency">KSh</span>
+                <label for="amount-paid" class="visually-hidden">Money received</label>
+                <input type="number" id="amount-paid" step="1" min="0" inputmode="numeric" placeholder="0">
+                <button type="button" id="clear-tender" class="btn-link">Clear</button>
             </div>
 
-            <div class="pay-toggle" role="group" aria-label="Payment method">
-                <button type="button" class="pay-option selected"
-                        data-method="cash">Cash</button>
-                <button type="button" class="pay-option" data-method="mpesa">M-Pesa</button>
+            {# Tap the notes and coins the customer hands over. Taps add up,
+               the way money arrives at a counter. #}
+            <div class="denom-grid">
+                <button type="button" class="denom coin" data-add="10">10</button>
+                <button type="button" class="denom coin" data-add="20">20</button>
+                <button type="button" class="denom note-50" data-add="50">50</button>
+                <button type="button" class="denom note-100" data-add="100">100</button>
+                <button type="button" class="denom note-200" data-add="200">200</button>
+                <button type="button" class="denom note-500" data-add="500">500</button>
+                <button type="button" class="denom note-1000" data-add="1000">1000</button>
+                <button type="button" class="denom denom-exact" id="exact-btn">Exact</button>
             </div>
 
-            {# Tapping the notes the customer actually handed over is
-               faster and less error-prone than typing an amount, and it
-               is how the money is counted anyway. #}
-            <div id="cash-row">
-                <label>Money received</label>
-                <div class="denom-grid">
-                    {% for value in [10, 20, 50, 100, 200, 500, 1000] %}
-                    <button type="button" class="denom" data-add="{{ value }}">{{ value }}</button>
-                    {% endfor %}
-                    <button type="button" class="denom denom-exact" id="exact-btn">Exact</button>
+            <div id="change-box" class="balance" hidden>
+                <div class="balance-row">
+                    <span>Total</span><span id="change-total"></span>
                 </div>
-
-                <div class="tender-row">
-                    <input type="number" id="amount-paid" step="1" min="0"
-                           inputmode="numeric" placeholder="0">
-                    <button type="button" id="clear-tender" class="btn-secondary">Clear</button>
+                <div class="balance-row">
+                    <span>Received</span><span id="change-received"></span>
                 </div>
-
-                {# The three numbers the cashier reads out loud. #}
-                <div id="change-box" class="change-box" hidden>
-                    <div class="change-line">
-                        <span>Total</span><span id="change-total"></span>
-                    </div>
-                    <div class="change-line">
-                        <span>Received</span><span id="change-received"></span>
-                    </div>
-                    <div class="change-line change-line-result" id="change-result-row">
-                        <span id="change-label">Balance to give</span>
-                        <span id="change-amount"></span>
-                    </div>
+                <div class="balance-row balance-result" id="change-result-row">
+                    <span id="change-label">Balance to give</span>
+                    <span id="change-amount"></span>
                 </div>
             </div>
-
-            <button id="checkout-btn" class="btn-primary btn-block" disabled>
-                Complete sale
-            </button>
         </div>
-    </div>
+
+        <div id="mpesa-note" class="mpesa-note" hidden>
+            <span>📱</span>
+            <div>
+                Ask the customer to pay the total to the till number. When the
+                M-Pesa message arrives, check the amount, then complete the sale.
+            </div>
+        </div>
+
+        <button id="checkout-btn" class="btn-primary btn-block btn-xl" disabled>
+            Complete sale
+        </button>
+    </section>
 
 </div>
 
 {# Shown after a sale so the cashier can hand over change and print. #}
 <div id="sale-done" class="modal" hidden>
     <div class="modal-card">
-        <p class="modal-tick">✓</p>
-        <h2 id="done-title">Sale complete</h2>
+        <div class="modal-tick">✓</div>
+        <h2 id="done-title">Sale complete!</h2>
         <p class="modal-receipt" id="done-receipt"></p>
         <p class="modal-change" id="done-change" hidden></p>
         <div class="modal-actions">
-            <a id="done-print" class="btn-secondary" target="_blank" rel="noopener">Print receipt</a>
-            <button id="done-next" class="btn-primary">Next customer</button>
+            <a id="done-print" class="btn-secondary" target="_blank" rel="noopener">🧾 Print receipt</a>
+            <button id="done-next" class="btn-primary">Next customer →</button>
         </div>
     </div>
 </div>

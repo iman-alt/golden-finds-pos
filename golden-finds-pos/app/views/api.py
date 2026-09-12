@@ -166,9 +166,46 @@ def stock_in():
     product = products.get(product_id)
     return jsonify({
         "success": True,
-        "message": f"Added {quantity} to {product['name']}.",
+        "message": f"Added {quantity} × {product['name']}.",
         "stock_quantity": product["stock_quantity"],
     })
+
+
+@bp.get("/stock-in/recent")
+@admin_required
+def stock_in_recent():
+    """
+    Deliveries logged in the last day, newest first - the list on the
+    stock-in screen that confirms a scan was actually saved.
+    """
+    from ..db import query_all
+
+    rows = query_all(
+        """
+        SELECT m.id, m.quantity_change, m.created_at,
+               p.name, p.category, b.expiry_date, u.name AS user_name
+        FROM stock_movements m
+        JOIN products p ON p.id = m.product_id
+        LEFT JOIN batches b ON b.id = m.batch_id
+        LEFT JOIN users u ON u.id = m.created_by
+        WHERE m.movement_type = 'stock_in'
+          AND m.created_at >= datetime('now', '-1 day')
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT 50
+        """
+    )
+    return jsonify([
+        {
+            "id": row["id"],
+            "product_name": row["name"],
+            "icon": icon_for(row["name"], row["category"]),
+            "quantity": row["quantity_change"],
+            "expiry_date": row["expiry_date"],
+            "user_name": row["user_name"],
+            "time": row["created_at"][11:16],
+        }
+        for row in rows
+    ])
 
 
 @bp.post("/offer")
