@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "golden-finds-pos",
+      "runtimeExecutable": "golden-finds-pos/.venv/Scripts/python.exe",
+      "runtimeArgs": ["golden-finds-pos/run.py"],
+      "port": 5000
+    }
+  ]
+}

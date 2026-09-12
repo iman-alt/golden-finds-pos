@@ -33,6 +33,15 @@
 
 * { box-sizing: border-box; }
 
+/*
+ * The HTML `hidden` attribute is how every panel on this site is shown and
+ * hidden. The browser implements it as a low-priority `display: none`, so
+ * any class here that sets `display` would silently beat it - which is how
+ * the sale-complete modal ended up permanently on screen. This makes the
+ * attribute win, always.
+ */
+[hidden] { display: none !important; }
+
 body {
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
