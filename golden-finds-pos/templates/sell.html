@@ -79,28 +79,43 @@
                 <span id="cart-total">{{ 0 | money }}</span>
             </div>
 
-            <label for="payment-method">Payment</label>
-            <select id="payment-method">
-                <option value="cash">Cash</option>
-                <option value="mpesa">M-Pesa</option>
-                <option value="credit">Credit (customer account)</option>
-            </select>
-
-            {# Cash tendered, so the screen can work out the change. The
-               original had no way to record this at all. #}
-            <div id="cash-row">
-                <label for="amount-paid">Cash given</label>
-                <input type="number" id="amount-paid" step="0.01" min="0"
-                       inputmode="decimal" placeholder="Leave blank for exact">
-                <p id="change-due" class="change-due" hidden></p>
+            <div class="pay-toggle" role="group" aria-label="Payment method">
+                <button type="button" class="pay-option selected"
+                        data-method="cash">Cash</button>
+                <button type="button" class="pay-option" data-method="mpesa">M-Pesa</button>
             </div>
 
-            <div id="customer-row" hidden>
-                <label for="customer-search">Customer account</label>
-                <input type="text" id="customer-search" autocomplete="off"
-                       placeholder="Search name or phone...">
-                <div id="customer-results" class="search-results"></div>
-                <p id="customer-chosen" class="customer-chosen" hidden></p>
+            {# Tapping the notes the customer actually handed over is
+               faster and less error-prone than typing an amount, and it
+               is how the money is counted anyway. #}
+            <div id="cash-row">
+                <label>Money received</label>
+                <div class="denom-grid">
+                    {% for value in [10, 20, 50, 100, 200, 500, 1000] %}
+                    <button type="button" class="denom" data-add="{{ value }}">{{ value }}</button>
+                    {% endfor %}
+                    <button type="button" class="denom denom-exact" id="exact-btn">Exact</button>
+                </div>
+
+                <div class="tender-row">
+                    <input type="number" id="amount-paid" step="1" min="0"
+                           inputmode="numeric" placeholder="0">
+                    <button type="button" id="clear-tender" class="btn-secondary">Clear</button>
+                </div>
+
+                {# The three numbers the cashier reads out loud. #}
+                <div id="change-box" class="change-box" hidden>
+                    <div class="change-line">
+                        <span>Total</span><span id="change-total"></span>
+                    </div>
+                    <div class="change-line">
+                        <span>Received</span><span id="change-received"></span>
+                    </div>
+                    <div class="change-line change-line-result" id="change-result-row">
+                        <span id="change-label">Balance to give</span>
+                        <span id="change-amount"></span>
+                    </div>
+                </div>
             </div>
 
             <button id="checkout-btn" class="btn-primary btn-block" disabled>

@@ -19,7 +19,7 @@
 
 <div class="stat-row">
     <div class="stat-card">
-        <p class="stat-label">Net takings</p>
+        <p class="stat-label">Today's takings</p>
         <p class="stat-value">{{ summary.net_revenue_cents | money }}</p>
         <p class="stat-detail">
             {{ summary.sale_count }} sales &middot; {{ summary.units_sold }} units
@@ -33,17 +33,14 @@
         <p class="stat-detail">cost of goods {{ summary.cost_cents | money }}</p>
     </div>
     <div class="stat-card highlight">
-        <p class="stat-label">Cash that should be in the drawer</p>
+        <p class="stat-label">Cash in drawer</p>
         <p class="stat-value">{{ summary.expected_cash_cents | money }}</p>
         <p class="stat-detail">count the drawer against this</p>
     </div>
     <div class="stat-card">
-        <p class="stat-label">Not cash</p>
-        <p class="stat-value">{{ (summary.mpesa_cents + summary.credit_cents) | money }}</p>
-        <p class="stat-detail">
-            M-Pesa {{ summary.mpesa_cents | money }} &middot;
-            on credit {{ summary.credit_cents | money }}
-        </p>
+        <p class="stat-label">M-Pesa</p>
+        <p class="stat-value">{{ summary.mpesa_cents | money }}</p>
+        <p class="stat-detail">paid to the till number</p>
     </div>
 </div>
 

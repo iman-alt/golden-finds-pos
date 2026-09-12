@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import create_app
 from app.config import Config
 from app.db import transaction
-from app.services import customers, products, stock, users
+from app.services import products, stock, users
 
 
 @pytest.fixture(autouse=True)
@@ -107,18 +107,6 @@ def make_product(ctx, owner):
         return products.get(product_id)
 
     counter = 0
-    return _make
-
-
-@pytest.fixture
-def make_customer(ctx, owner):
-    def _make(name="Wanjiku", credit_limit_cents=0):
-        with transaction() as conn:
-            customer_id = customers.create(
-                conn, name=name, credit_limit_cents=credit_limit_cents,
-                created_by=owner["id"],
-            )
-        return customers.get(customer_id)
     return _make
 
 

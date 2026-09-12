@@ -35,9 +35,7 @@ def daily_summary(day=None):
                COALESCE(SUM(CASE WHEN s.payment_method = 'cash'
                                  THEN s.total_cents ELSE 0 END), 0) AS cash_cents,
                COALESCE(SUM(CASE WHEN s.payment_method = 'mpesa'
-                                 THEN s.total_cents ELSE 0 END), 0) AS mpesa_cents,
-               COALESCE(SUM(CASE WHEN s.payment_method = 'credit'
-                                 THEN s.total_cents ELSE 0 END), 0) AS credit_cents
+                                 THEN s.total_cents ELSE 0 END), 0) AS mpesa_cents
         FROM sales s
         WHERE date(s.created_at) = date(?) AND {_LIVE}
         """,
@@ -89,7 +87,6 @@ def daily_summary(day=None):
         "profit_cents": net_revenue - goods["cost_cents"],
         "cash_cents": totals["cash_cents"],
         "mpesa_cents": totals["mpesa_cents"],
-        "credit_cents": totals["credit_cents"],
         "void_count": voids["void_count"],
         "voided_cents": voids["voided_cents"],
         # What should physically be in the drawer, before any float.
@@ -132,9 +129,7 @@ def cashier_day(user_id, day=None):
                COALESCE(SUM(CASE WHEN s.payment_method = 'cash'
                                  THEN s.total_cents ELSE 0 END), 0) AS cash_cents,
                COALESCE(SUM(CASE WHEN s.payment_method = 'mpesa'
-                                 THEN s.total_cents ELSE 0 END), 0) AS mpesa_cents,
-               COALESCE(SUM(CASE WHEN s.payment_method = 'credit'
-                                 THEN s.total_cents ELSE 0 END), 0) AS credit_cents
+                                 THEN s.total_cents ELSE 0 END), 0) AS mpesa_cents
         FROM sales s
         WHERE s.cashier_id = ? AND date(s.created_at) = date(?) AND {_LIVE}
         """,
@@ -158,7 +153,6 @@ def cashier_day(user_id, day=None):
         "revenue_cents": totals["revenue_cents"],
         "cash_cents": totals["cash_cents"],
         "mpesa_cents": totals["mpesa_cents"],
-        "credit_cents": totals["credit_cents"],
     }
 
 
@@ -235,16 +229,5 @@ def inventory_value():
                COALESCE(SUM(stock_quantity * retail_price_cents), 0) AS retail_cents,
                COALESCE(SUM(stock_quantity), 0)                      AS units
         FROM products WHERE active = 1
-        """
-    )
-
-
-def outstanding_credit():
-    return query_all(
-        """
-        SELECT id, name, phone, credit_balance_cents
-        FROM customers
-        WHERE credit_balance_cents > 0
-        ORDER BY credit_balance_cents DESC
         """
     )

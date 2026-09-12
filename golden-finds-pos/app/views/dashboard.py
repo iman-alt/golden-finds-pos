@@ -37,7 +37,6 @@ def index():
             "revenue_series": reports.revenue_series(days=14),
             "inventory": reports.inventory_value(),
             "discrepancies": stock.find_discrepancies(),
-            "credit": reports.outstanding_credit(),
             "backup_warning": _backup_warning(),
         })
 

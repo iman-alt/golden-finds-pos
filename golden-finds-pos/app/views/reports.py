@@ -59,17 +59,6 @@ def product_performance():
     )
 
 
-@bp.get("/credit")
-@admin_required
-def credit():
-    balances = rpt.outstanding_credit()
-    return render_template(
-        "reports/credit.html",
-        balances=balances,
-        total_cents=sum(row["credit_balance_cents"] for row in balances),
-    )
-
-
 @bp.get("/daily.csv")
 @admin_required
 def daily_csv():
@@ -96,7 +85,6 @@ def daily_csv():
         ("Profit", "profit_cents"),
         ("Cash", "cash_cents"),
         ("M-Pesa", "mpesa_cents"),
-        ("Credit", "credit_cents"),
         ("Voided sales", "void_count"),
     ):
         value = summary[key]

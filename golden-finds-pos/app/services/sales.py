@@ -128,33 +128,17 @@ def record_sale(conn, *, cashier_id, items, payment_method,
     """
     if not items:
         raise SaleError("Cart is empty.")
-    if payment_method not in ("cash", "mpesa", "credit"):
+    if payment_method not in ("cash", "mpesa"):
         raise SaleError("Choose a valid payment method.")
 
     lines, subtotal = price_cart(items, conn=conn)
     total = subtotal
 
-    # Payment checks, before any stock moves.
-    if payment_method == "credit":
-        if not customer_id:
-            raise SaleError("A credit sale needs a customer account.")
-        customer = conn.execute(
-            "SELECT * FROM customers WHERE id = ?", (customer_id,)
-        ).fetchone()
-        if customer is None:
-            raise SaleError("Customer not found.")
-        new_balance = customer["credit_balance_cents"] + total
-        if customer["credit_limit_cents"] and new_balance > customer["credit_limit_cents"]:
-            raise SaleError(
-                f"{customer['name']} would go over their credit limit."
-            )
-        paid = 0
-        change = 0
-    else:
-        paid = total if amount_paid_cents is None else amount_paid_cents
-        if paid < total:
-            raise SaleError("Amount paid is less than the total.")
-        change = paid - total
+    # Payment check, before any stock moves.
+    paid = total if amount_paid_cents is None else amount_paid_cents
+    if paid < total:
+        raise SaleError("Amount paid is less than the total.")
+    change = paid - total
 
     cursor = conn.execute(
         """
@@ -197,13 +181,6 @@ def record_sale(conn, *, cashier_id, items, payment_method,
         """,
         (sale_id, customer_id, total, payment_method, cashier_id),
     )
-
-    if payment_method == "credit":
-        conn.execute(
-            "UPDATE customers SET credit_balance_cents = credit_balance_cents + ? "
-            "WHERE id = ?",
-            (total, customer_id),
-        )
 
     return sale_id
 
@@ -332,13 +309,6 @@ def void_sale(conn, sale_id, *, voided_by, reason):
             created_by=voided_by, note=reason,
         )
 
-    if sale["payment_method"] == "credit" and sale["customer_id"]:
-        conn.execute(
-            "UPDATE customers SET credit_balance_cents = credit_balance_cents - ? "
-            "WHERE id = ?",
-            (sale["total_cents"], sale["customer_id"]),
-        )
-
     conn.execute(
         """
         UPDATE sales SET status = 'voided', voided_by = ?,
@@ -436,13 +406,6 @@ def record_return(conn, *, sale_id, product_id, quantity, reason,
         # the sale's own deduction already accounts for them leaving.
 
         remaining -= take
-
-    if sale["payment_method"] == "credit" and sale["customer_id"]:
-        conn.execute(
-            "UPDATE customers SET credit_balance_cents = credit_balance_cents - ? "
-            "WHERE id = ?",
-            (refunded, sale["customer_id"]),
-        )
 
     conn.execute(
         """

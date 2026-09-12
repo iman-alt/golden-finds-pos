@@ -30,11 +30,6 @@
         <p class="stat-value">{{ summary.mpesa_cents | money }}</p>
         <p class="stat-detail">not in the drawer</p>
     </div>
-    <div class="stat-card">
-        <p class="stat-label">On credit</p>
-        <p class="stat-value">{{ summary.credit_cents | money }}</p>
-        <p class="stat-detail">owed by customers</p>
-    </div>
 </div>
 
 {% if expiring %}
@@ -76,9 +71,6 @@
                 <td>{{ s['created_at'][11:16] }}</td>
                 <td>
                     {{ s['payment_method'] }}
-                    {% if s['customer_name'] %}
-                    <br><span class="cell-sub">{{ s['customer_name'] }}</span>
-                    {% endif %}
                 </td>
                 <td class="num">{{ s['item_count'] or 0 }}</td>
                 <td class="num">{{ s['total_cents'] | money_plain }}</td>

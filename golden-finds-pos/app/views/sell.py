@@ -8,7 +8,7 @@ from flask import (
 
 from ..db import transaction
 from ..security import admin_required, current_user, login_required
-from ..services import customers, offers, sales, users
+from ..services import offers, sales, users
 from ..services.sales import SaleError
 
 bp = Blueprint("sell", __name__)
@@ -157,73 +157,3 @@ def refund(sale_id):
 
     flash(f"Refunded {refunded / 100:,.2f}.", "success")
     return redirect(url_for("sell.receipt", sale_id=sale_id))
-
-
-@bp.get("/customers")
-@login_required
-def customer_list():
-    return render_template("customers.html", customers=customers.list_customers())
-
-
-@bp.post("/customers")
-@admin_required
-def customer_create():
-    from ..money import MoneyError, parse_money
-    from ..services.customers import CustomerError
-
-    try:
-        limit_raw = request.form.get("credit_limit", "").strip()
-        limit_cents = parse_money(limit_raw, field="Credit limit",
-                                  allow_zero=True) if limit_raw else 0
-        with transaction() as conn:
-            customers.create(
-                conn,
-                name=request.form.get("name", ""),
-                phone=request.form.get("phone", ""),
-                is_wholesale=request.form.get("is_wholesale") == "on",
-                credit_limit_cents=limit_cents,
-                created_by=current_user()["id"],
-            )
-    except (CustomerError, MoneyError) as err:
-        flash(str(err), "error")
-        return redirect(url_for("sell.customer_list"))
-
-    flash("Customer added.", "success")
-    return redirect(url_for("sell.customer_list"))
-
-
-@bp.get("/customers/<int:customer_id>")
-@login_required
-def customer_detail(customer_id):
-    customer = customers.get(customer_id)
-    if customer is None:
-        abort(404)
-    return render_template(
-        "customer_detail.html",
-        customer=customer,
-        entries=customers.statement(customer_id),
-    )
-
-
-@bp.post("/customers/<int:customer_id>/pay")
-@admin_required
-def customer_pay(customer_id):
-    from ..money import MoneyError, parse_money
-    from ..services.customers import CustomerError
-
-    try:
-        amount = parse_money(request.form.get("amount"), field="Payment")
-        with transaction() as conn:
-            customers.record_payment(
-                conn,
-                customer_id=customer_id,
-                amount_cents=amount,
-                method=request.form.get("method", "cash"),
-                created_by=current_user()["id"],
-            )
-    except (CustomerError, MoneyError) as err:
-        flash(str(err), "error")
-        return redirect(url_for("sell.customer_detail", customer_id=customer_id))
-
-    flash("Payment recorded.", "success")
-    return redirect(url_for("sell.customer_detail", customer_id=customer_id))

@@ -675,6 +675,65 @@ kbd {
 }
 #checkout-btn { margin-top: 16px; padding: 15px; font-size: 16px; }
 
+/* ------------------------------------------------------ payment and change -- */
+
+.pay-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 14px 0 4px;
+}
+.pay-option {
+    padding: 11px;
+    border: 2px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+    font-weight: 600;
+}
+.pay-option.selected { border-color: var(--gold); background: var(--gold-tint); color: var(--gold-ink); }
+
+/* Big, tappable notes and coins. */
+.denom-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+.denom {
+    padding: 11px 0;
+    border: 1px solid #e8d79f;
+    border-radius: 8px;
+    background: #fffdf6;
+    font-size: 16px;
+    font-weight: 700;
+}
+.denom:hover { background: var(--gold-tint); border-color: var(--gold); }
+.denom:active { transform: scale(.97); }
+.denom-exact { font-size: 13px; color: var(--gold-ink); }
+
+.tender-row { display: flex; gap: 8px; margin-top: 8px; }
+.tender-row input { font-size: 20px; font-weight: 700; }
+
+.change-box {
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.change-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 14px;
+    font-size: 16px;
+}
+.change-line + .change-line { border-top: 1px solid var(--line); }
+.change-line-result {
+    background: var(--green-bg);
+    color: var(--green);
+    font-size: 22px;
+    font-weight: 800;
+}
+.change-line-result.short { background: var(--red-bg); color: var(--red); }
+
 /* -------------------------------------------------- icons and pairings -- */
 
 /*

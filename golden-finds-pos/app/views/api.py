@@ -12,7 +12,7 @@ from flask import Blueprint, jsonify, request
 from ..db import transaction
 from ..money import MoneyError, format_money, parse_money
 from ..security import admin_required, current_user, login_required
-from ..services import customers, offers, products, sales, stock
+from ..services import offers, products, sales, stock
 from ..services.icons import icon_for
 from ..services.products import ProductError
 from ..services.sales import SaleError
@@ -115,7 +115,6 @@ def checkout():
                 items=items,
                 payment_method=data.get("payment_method", "cash"),
                 amount_paid_cents=paid_cents,
-                customer_id=data.get("customer_id") or None,
             )
     except (SaleError, StockError) as err:
         return _fail(str(err))
@@ -258,19 +257,4 @@ def pairing_suggestions(product_id):
             "pinned": bool(row["pinned"]),
         }
         for row in pairings.suggestions_for(product_id)
-    ])
-
-
-@bp.get("/customers/search")
-@login_required
-def customer_search():
-    return jsonify([
-        {
-            "id": c["id"],
-            "name": c["name"],
-            "phone": c["phone"],
-            "credit_balance_cents": c["credit_balance_cents"],
-            "credit_balance_display": format_money(c["credit_balance_cents"]),
-        }
-        for c in customers.search(request.args.get("q", ""))
     ])

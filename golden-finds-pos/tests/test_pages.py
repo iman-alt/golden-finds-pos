@@ -9,11 +9,11 @@ they catch the class of error that otherwise only shows up in the shop.
 import pytest
 
 from app.db import transaction
-from app.services import customers, offers, sales
+from app.services import offers, sales
 
 
 @pytest.fixture
-def shop(client, owner, cashier, make_product, make_customer):
+def shop(client, owner, cashier, make_product):
     """A shop with enough history that every page has something to draw."""
     from datetime import date, timedelta
     from app.services import stock
@@ -36,8 +36,6 @@ def shop(client, owner, cashier, make_product, make_customer):
                             offer_price_cents=4000, approved_by=owner["id"],
                             tier="urgent")
 
-    customer = make_customer(name="Wanjiku")
-
     with transaction() as conn:
         cash_sale = sales.record_sale(
             conn, cashier_id=cashier["id"],
@@ -45,10 +43,10 @@ def shop(client, owner, cashier, make_product, make_customer):
                    {"product_id": perishable["id"], "quantity": 3}],
             payment_method="cash", amount_paid_cents=50000,
         )
-        credit_sale = sales.record_sale(
+        mpesa_sale = sales.record_sale(
             conn, cashier_id=cashier["id"],
             items=[{"product_id": plain["id"], "quantity": 1}],
-            payment_method="credit", customer_id=customer["id"],
+            payment_method="mpesa",
         )
 
     with transaction() as conn:
@@ -59,15 +57,14 @@ def shop(client, owner, cashier, make_product, make_customer):
     return {
         "product": plain,
         "perishable": perishable,
-        "customer": customer,
         "cash_sale": cash_sale,
-        "credit_sale": credit_sale,
+        "mpesa_sale": mpesa_sale,
     }
 
 
 OWNER_PAGES = [
     "/", "/sell", "/stock-in", "/products", "/add-product", "/sales",
-    "/customers", "/reports/", "/reports/products", "/reports/credit",
+    "/reports/", "/reports/products",
     "/reports/daily.csv", "/admin/staff", "/admin/offers", "/admin/audit",
     "/admin/pairings",
     "/change-pin",
@@ -86,16 +83,15 @@ def test_detail_pages_render(client, shop):
 
     for path in (
         f"/receipt/{shop['cash_sale']}",
-        f"/receipt/{shop['credit_sale']}",
+        f"/receipt/{shop['mpesa_sale']}",
         f"/sales/{shop['cash_sale']}/return",
-        f"/customers/{shop['customer']['id']}",
         f"/products/{shop['product']['id']}/edit",
         f"/products/{shop['product']['id']}/adjust",
     ):
         assert client.get(path).status_code == 200, path
 
 
-CASHIER_PAGES = ["/", "/sell", "/products", "/sales", "/customers", "/my-day"]
+CASHIER_PAGES = ["/", "/sell", "/products", "/sales", "/my-day"]
 
 
 @pytest.mark.parametrize("path", CASHIER_PAGES)
@@ -111,7 +107,6 @@ CASHIER_FORBIDDEN = [
     "/add-product",
     "/reports/",
     "/reports/products",
-    "/reports/credit",
     "/admin/staff",
     "/admin/offers",
     "/admin/audit",
@@ -228,3 +223,15 @@ def test_a_product_name_cannot_inject_markup(client, owner, make_product):
     body = client.get("/products").get_data(as_text=True)
     assert "<script>alert" not in body
     assert "&lt;script&gt;" in body
+
+
+def test_credit_is_no_longer_offered(client, shop):
+    client.post("/login", data={"name": "Owner", "pin": "482913"})
+    body = client.get("/sell").get_data(as_text=True)
+    assert "Credit" not in body
+    assert client.get("/customers").status_code == 404
+    response = client.post("/api/checkout", json={
+        "items": [{"product_id": shop["product"]["id"], "quantity": 1}],
+        "payment_method": "credit",
+    })
+    assert response.status_code == 400

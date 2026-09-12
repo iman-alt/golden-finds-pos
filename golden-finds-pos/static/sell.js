@@ -18,20 +18,22 @@ const cartItemsEl = document.getElementById('cart-items');
 const cartTotalEl = document.getElementById('cart-total');
 const checkoutBtn = document.getElementById('checkout-btn');
 const clearCartBtn = document.getElementById('clear-cart');
-const paymentMethodEl = document.getElementById('payment-method');
 const cashRow = document.getElementById('cash-row');
 const amountPaidEl = document.getElementById('amount-paid');
-const changeDueEl = document.getElementById('change-due');
-const customerRow = document.getElementById('customer-row');
-const customerSearchEl = document.getElementById('customer-search');
-const customerResults = document.getElementById('customer-results');
-const customerChosenEl = document.getElementById('customer-chosen');
+const clearTenderBtn = document.getElementById('clear-tender');
+const exactBtn = document.getElementById('exact-btn');
+const changeBox = document.getElementById('change-box');
+const changeTotalEl = document.getElementById('change-total');
+const changeReceivedEl = document.getElementById('change-received');
+const changeLabelEl = document.getElementById('change-label');
+const changeAmountEl = document.getElementById('change-amount');
+const changeResultRow = document.getElementById('change-result-row');
 const saleDone = document.getElementById('sale-done');
 
 let cart = [];              // [{ id, quantity }]
 let pricedLines = [];       // server's answer, rendered as-is
 let subtotalCents = 0;
-let selectedCustomer = null;
+let paymentMethod = 'cash';
 let busy = false;
 
 // ---------------------------------------------------------------- utils --
@@ -95,7 +97,7 @@ scannerInput.addEventListener('keydown', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'F2' && cart.length) {
         e.preventDefault();
-        (paymentMethodEl.value === 'cash' ? amountPaidEl : checkoutBtn).focus();
+        (paymentMethod === 'cash' ? amountPaidEl : checkoutBtn).focus();
     }
 });
 
@@ -402,82 +404,72 @@ clearCartBtn.addEventListener('click', () => {
 
 // --------------------------------------------------------------- payment --
 
-paymentMethodEl.addEventListener('change', () => {
-    const method = paymentMethodEl.value;
-    cashRow.hidden = method !== 'cash';
-    customerRow.hidden = method !== 'credit';
-    if (method !== 'credit') {
-        selectedCustomer = null;
-        customerChosenEl.hidden = true;
-    }
+document.querySelectorAll('.pay-option').forEach(option => {
+    option.addEventListener('click', () => {
+        document.querySelectorAll('.pay-option')
+            .forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+        paymentMethod = option.dataset.method;
+
+        // M-Pesa is paid on the phone, so there is no change to work out.
+        cashRow.hidden = paymentMethod !== 'cash';
+        updateChange();
+    });
+});
+
+/*
+ * The denomination buttons add up, because that is how money arrives at
+ * a counter - a 500 and two 100s, not "seven hundred". Tapping is also
+ * faster and harder to fat-finger than typing.
+ */
+document.querySelectorAll('.denom[data-add]').forEach(button => {
+    button.addEventListener('click', () => {
+        const current = parseInt(amountPaidEl.value || '0', 10) || 0;
+        amountPaidEl.value = current + parseInt(button.dataset.add, 10);
+        updateChange();
+    });
+});
+
+exactBtn.addEventListener('click', () => {
+    amountPaidEl.value = Math.round(subtotalCents / 100);
     updateChange();
+});
+
+clearTenderBtn.addEventListener('click', () => {
+    amountPaidEl.value = '';
+    updateChange();
+    amountPaidEl.focus();
 });
 
 amountPaidEl.addEventListener('input', updateChange);
 
 function updateChange() {
-    const paid = Math.round(parseFloat(amountPaidEl.value || '0') * 100);
-    if (!paid || subtotalCents === 0 || paymentMethodEl.value !== 'cash') {
-        changeDueEl.hidden = true;
+    const received = Math.round(parseFloat(amountPaidEl.value || '0') * 100);
+
+    if (subtotalCents === 0 || paymentMethod !== 'cash' || !received) {
+        changeBox.hidden = true;
         return;
     }
-    changeDueEl.hidden = false;
-    if (paid < subtotalCents) {
-        changeDueEl.textContent = `Short by ${money(subtotalCents - paid)}`;
-        changeDueEl.className = 'change-due short';
+
+    changeBox.hidden = false;
+    changeTotalEl.textContent = money(subtotalCents);
+    changeReceivedEl.textContent = money(received);
+
+    if (received < subtotalCents) {
+        changeLabelEl.textContent = 'Still owing';
+        changeAmountEl.textContent = money(subtotalCents - received);
+        changeResultRow.className = 'change-line change-line-result short';
     } else {
-        changeDueEl.textContent = `Change: ${money(paid - subtotalCents)}`;
-        changeDueEl.className = 'change-due';
+        changeLabelEl.textContent = 'Balance to give';
+        changeAmountEl.textContent = money(received - subtotalCents);
+        changeResultRow.className = 'change-line change-line-result';
     }
 }
-
-let customerDebounce;
-customerSearchEl.addEventListener('input', () => {
-    clearTimeout(customerDebounce);
-    const term = customerSearchEl.value.trim();
-    if (term.length < 2) { customerResults.replaceChildren(); return; }
-
-    customerDebounce = setTimeout(async () => {
-        const res = await fetch(`/api/customers/search?q=${encodeURIComponent(term)}`);
-        if (!res.ok) return;
-        const people = await res.json();
-
-        customerResults.replaceChildren();
-        people.forEach(person => {
-            const item = document.createElement('button');
-            item.type = 'button';
-            item.className = 'search-result-item';
-
-            const name = document.createElement('span');
-            name.textContent = person.name;
-            const meta = document.createElement('span');
-            meta.className = 'search-result-meta';
-            meta.textContent = person.credit_balance_cents
-                ? `owes ${person.credit_balance_display}` : 'no balance';
-
-            item.append(name, meta);
-            item.addEventListener('click', () => {
-                selectedCustomer = person;
-                customerChosenEl.textContent = `Charging to ${person.name}`;
-                customerChosenEl.hidden = false;
-                customerSearchEl.value = '';
-                customerResults.replaceChildren();
-            });
-            customerResults.appendChild(item);
-        });
-    }, 200);
-});
 
 // -------------------------------------------------------------- checkout --
 
 checkoutBtn.addEventListener('click', async () => {
     if (cart.length === 0 || busy) return;
-
-    if (paymentMethodEl.value === 'credit' && !selectedCustomer) {
-        showMessage('Choose the customer whose account this goes to.', 'error');
-        customerSearchEl.focus();
-        return;
-    }
 
     busy = true;
     checkoutBtn.disabled = true;
@@ -486,9 +478,8 @@ checkoutBtn.addEventListener('click', async () => {
     try {
         const { ok, data } = await postJSON('/api/checkout', {
             items: cart.map(i => ({ product_id: i.id, quantity: i.quantity })),
-            payment_method: paymentMethodEl.value,
+            payment_method: paymentMethod,
             amount_paid: amountPaidEl.value || null,
-            customer_id: selectedCustomer ? selectedCustomer.id : null,
         });
 
         if (!ok) {
@@ -526,9 +517,8 @@ function showSaleDone(result) {
     document.getElementById('done-next').focus();
 
     cart = [];
-    selectedCustomer = null;
     amountPaidEl.value = '';
-    customerChosenEl.hidden = true;
+    updateChange();
     repriceAndRender();
 }
 

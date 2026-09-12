@@ -1,5 +1,5 @@
 """
-The sale lifecycle: payment, receipts, voids, returns and credit.
+The sale lifecycle: payment, receipts, voids and returns.
 
 None of this existed in the original - the tables were there but no code
 touched them.
@@ -8,7 +8,7 @@ touched them.
 import pytest
 
 from app.db import query_one, transaction
-from app.services import customers, products, sales
+from app.services import products, sales
 from app.services.sales import SaleError
 
 
@@ -238,69 +238,19 @@ def test_a_sale_with_returns_cannot_be_voided(make_product, owner, cashier):
             sales.void_sale(conn, sale_id, voided_by=owner["id"], reason="x")
 
 
-# --------------------------------------------------------------- CREDIT --
-
-def test_a_credit_sale_raises_the_customer_balance(make_product, make_customer, cashier):
+def test_mpesa_sale_records_no_change(make_product, cashier):
     product = make_product(retail=10000, stock_qty=10)
-    customer = make_customer()
-
-    _sell(cashier, product, 3, payment_method="credit", customer_id=customer["id"])
-
-    assert customers.get(customer["id"])["credit_balance_cents"] == 30000
+    sale = sales.get_sale(_sell(cashier, product, 2, payment_method="mpesa"))
+    assert sale["payment_method"] == "mpesa"
+    assert sale["change_cents"] == 0
 
 
-def test_credit_needs_a_customer(make_product, cashier):
-    product = make_product(stock_qty=10)
-    with pytest.raises(SaleError, match="customer account"):
-        _sell(cashier, product, 1, payment_method="credit")
-
-
-def test_the_credit_limit_is_enforced(make_product, make_customer, cashier):
-    product = make_product(retail=10000, stock_qty=50)
-    customer = make_customer(credit_limit_cents=25000)
-
-    _sell(cashier, product, 2, payment_method="credit", customer_id=customer["id"])
-
-    with pytest.raises(SaleError, match="credit limit"):
-        _sell(cashier, product, 1, payment_method="credit",
-              customer_id=customer["id"])
-
-
-def test_a_repayment_lowers_the_balance(make_product, make_customer, cashier):
-    product = make_product(retail=10000, stock_qty=10)
-    customer = make_customer()
-    _sell(cashier, product, 2, payment_method="credit", customer_id=customer["id"])
-
-    with transaction() as conn:
-        customers.record_payment(conn, customer_id=customer["id"],
-                                 amount_cents=15000, method="mpesa",
-                                 created_by=cashier["id"])
-
-    assert customers.get(customer["id"])["credit_balance_cents"] == 5000
-
-
-def test_overpayment_is_refused(make_product, make_customer, cashier):
-    from app.services.customers import CustomerError
-
-    customer = make_customer()
-    with pytest.raises(CustomerError, match="only owes"):
-        with transaction() as conn:
-            customers.record_payment(conn, customer_id=customer["id"],
-                                     amount_cents=5000, method="cash",
-                                     created_by=cashier["id"])
-
-
-def test_voiding_a_credit_sale_clears_the_debt(make_product, make_customer,
-                                               owner, cashier):
-    product = make_product(retail=10000, stock_qty=10)
-    customer = make_customer()
-    sale_id = _sell(cashier, product, 2, payment_method="credit",
-                    customer_id=customer["id"])
-
-    with transaction() as conn:
-        sales.void_sale(conn, sale_id, voided_by=owner["id"], reason="error")
-
-    assert customers.get(customer["id"])["credit_balance_cents"] == 0
+def test_change_for_whole_shilling_notes(make_product, cashier):
+    """Cash 600, received 1000, balance 400."""
+    product = make_product(retail=30000, wholesale=28000, stock_qty=10)
+    sale = sales.get_sale(_sell(cashier, product, 2, amount_paid_cents=100000))
+    assert sale["total_cents"] == 60000
+    assert sale["change_cents"] == 40000
 
 
 # ------------------------------------------------------------- RECEIPTS --

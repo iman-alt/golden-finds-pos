@@ -24,7 +24,7 @@
         <p class="stat-label">Cash in drawer</p>
         <p class="stat-value">{{ today.cash_cents | money }}</p>
         <p class="stat-detail">
-            M-Pesa {{ today.mpesa_cents | money }} &middot; Credit {{ today.credit_cents | money }}
+            plus M-Pesa {{ today.mpesa_cents | money }}
         </p>
     </div>
     <div class="stat-card">
@@ -160,24 +160,6 @@
         <p class="empty-msg">Nothing is nearing expiry.</p>
         {% endif %}
     </section>
-
-    {% if is_admin and credit %}
-    {# ---- Credit book ---- #}
-    <section class="dash-panel">
-        <div class="panel-head">
-            <h2>Owed to the shop</h2>
-            <a class="panel-link" href="{{ url_for('reports.credit') }}">Details</a>
-        </div>
-        <ul class="alert-list">
-            {% for c in credit[:8] %}
-            <li class="alert-row">
-                <a class="alert-name" href="{{ url_for('sell.customer_detail', customer_id=c['id']) }}">{{ c['name'] }}</a>
-                <span class="alert-badge badge-credit">{{ c['credit_balance_cents'] | money }}</span>
-            </li>
-            {% endfor %}
-        </ul>
-    </section>
-    {% endif %}
 
     {% if is_admin and revenue_series %}
     {# ---- Two-week trend. Bars, not a chart library - it is fourteen
