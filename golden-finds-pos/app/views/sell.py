@@ -55,17 +55,27 @@ def receipt(sale_id):
 @bp.get("/sales")
 @login_required
 def history():
+    from datetime import date
+
     user = current_user()
-    # A cashier sees their own sales; the owner sees everyone's.
+    is_admin = user["role"] == "admin"
+
+    # The owner can look at any day and any cashier. A shopkeeper sees only
+    # their own sales, and only today's - the query ignores whatever dates
+    # or cashier are put in the address bar.
     cashier_id = request.args.get("cashier_id", type=int)
-    if user["role"] != "admin":
+    date_from = request.args.get("from") or None
+    date_to = request.args.get("to") or None
+    if not is_admin:
         cashier_id = user["id"]
+        date_from = date_to = date.today().isoformat()
 
     return render_template(
         "sales_history.html",
+        today=date.today(),
         sales=sales.list_sales(
-            date_from=request.args.get("from") or None,
-            date_to=request.args.get("to") or None,
+            date_from=date_from,
+            date_to=date_to,
             cashier_id=cashier_id,
             search=request.args.get("q") or None,
             limit=100,

@@ -401,16 +401,14 @@ function receivedCents() {
 
 function updateChange() {
     const received = receivedCents();
-    const short = paymentMethod === 'cash' && received > 0 && received < subtotalCents;
+    const short = received > 0 && received < subtotalCents;
 
-    checkoutBtn.disabled = busy || subtotalCents === 0 || short;
+    checkoutBtn.disabled = busy || subtotalCents === 0
+        || (paymentMethod === 'cash' && short);
 
-    if (subtotalCents === 0 || paymentMethod !== 'cash' || !received) {
-        changeBox.hidden = true;
-        return;
-    }
-
-    changeBox.hidden = false;
+    // Always shown for cash, so the cashier can see the sum taking shape:
+    // Total, then what was handed over, then the balance.
+    changeBox.hidden = paymentMethod !== 'cash';
     $('change-total').textContent = money(subtotalCents);
     $('change-received').textContent = money(received);
 
@@ -421,7 +419,7 @@ function updateChange() {
         resultRow.className = 'balance-row balance-result short';
     } else {
         $('change-label').textContent = 'Balance to give';
-        $('change-amount').textContent = money(received - subtotalCents);
+        $('change-amount').textContent = money(Math.max(0, received - subtotalCents));
         resultRow.className = 'balance-row balance-result';
     }
 }

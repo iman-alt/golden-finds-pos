@@ -3,13 +3,24 @@
 {% block main_class %}wide{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Sales</h1>
+{% if is_admin %}
+<h1 class="page-title">🧾 Sales</h1>
+{% else %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">🧾 My sales today</h1>
+        <p class="page-subtitle">{{ today.strftime('%A, %d %B') }} &middot; only the sales you rang up</p>
+    </div>
+</div>
+{% endif %}
 
 <form method="GET" class="filter-bar">
     <input type="search" name="q" value="{{ filters.get('q', '') }}"
-           placeholder="Receipt number or customer...">
+           placeholder="Search by receipt number">
+    {% if is_admin %}
     <input type="date" name="from" value="{{ filters.get('from', '') }}">
     <input type="date" name="to" value="{{ filters.get('to', '') }}">
+    {% endif %}
     {% if is_admin %}
     <select name="cashier_id">
         <option value="">Everyone</option>

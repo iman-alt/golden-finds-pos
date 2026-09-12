@@ -235,3 +235,39 @@ def test_credit_is_no_longer_offered(client, shop):
         "payment_method": "credit",
     })
     assert response.status_code == 400
+
+
+def test_a_shopkeeper_sees_only_their_own_sales_for_today(client, shop, owner, make_product):
+    """
+    Even with dates or another cashier forced into the address, a
+    shopkeeper's sales list is their own sales, today, and nothing else.
+    """
+    from app.db import transaction
+    from app.services import sales as sales_service
+
+    product = make_product(name="Owner Only Item", retail=9900, wholesale=9000, stock_qty=5)
+    with transaction() as conn:
+        owner_sale = sales_service.record_sale(
+            conn, cashier_id=owner["id"],
+            items=[{"product_id": product["id"], "quantity": 1}],
+            payment_method="cash",
+        )
+        conn.execute(
+            "UPDATE sales SET created_at = datetime('now', '-3 days') WHERE id = ?",
+            (shop["mpesa_sale"],),
+        )
+
+    client.post("/login", data={"name": "Amina", "pin": "573820"})
+    body = client.get(
+        f"/sales?from=2000-01-01&to=2100-01-01&cashier_id={owner['id']}"
+    ).get_data(as_text=True)
+
+    with client.application.app_context():
+        own_today = sales_service.get_sale(shop["cash_sale"])["receipt_number"]
+        old = sales_service.get_sale(shop["mpesa_sale"])["receipt_number"]
+        not_mine = sales_service.get_sale(owner_sale)["receipt_number"]
+
+    assert own_today in body
+    assert old not in body, "an earlier day is hidden"
+    assert not_mine not in body, "someone else's sale is hidden"
+    assert 'type="date"' not in body, "no date picker for a shopkeeper"
