@@ -37,7 +37,7 @@ def daily_summary(day=None):
                COALESCE(SUM(CASE WHEN s.payment_method = 'mpesa'
                                  THEN s.total_cents ELSE 0 END), 0) AS mpesa_cents
         FROM sales s
-        WHERE date(s.created_at) = date(?) AND {_LIVE}
+        WHERE date(s.created_at, 'localtime') = date(?) AND {_LIVE}
         """,
         (day,),
     )
@@ -49,7 +49,7 @@ def daily_summary(day=None):
                COALESCE(SUM(si.quantity - si.quantity_returned), 0) AS units_sold
         FROM sale_items si
         JOIN sales s ON s.id = si.sale_id
-        WHERE date(s.created_at) = date(?) AND {_LIVE}
+        WHERE date(s.created_at, 'localtime') = date(?) AND {_LIVE}
         """,
         (day,),
     )
@@ -58,7 +58,7 @@ def daily_summary(day=None):
         """
         SELECT COALESCE(SUM(refunded_cents), 0) AS refunded_cents,
                COUNT(*)                         AS return_count
-        FROM returns WHERE date(created_at) = date(?)
+        FROM returns WHERE date(created_at, 'localtime') = date(?)
         """,
         (day,),
     )
@@ -68,7 +68,7 @@ def daily_summary(day=None):
         SELECT COUNT(*)                        AS void_count,
                COALESCE(SUM(total_cents), 0)   AS voided_cents
         FROM sales
-        WHERE date(created_at) = date(?) AND status = 'voided'
+        WHERE date(created_at, 'localtime') = date(?) AND status = 'voided'
         """,
         (day,),
     )
@@ -103,7 +103,7 @@ def sales_by_cashier(day=None):
                COALESCE(SUM(s.total_cents), 0) AS revenue_cents
         FROM sales s
         JOIN users u ON u.id = s.cashier_id
-        WHERE date(s.created_at) = date(?) AND {_LIVE}
+        WHERE date(s.created_at, 'localtime') = date(?) AND {_LIVE}
         GROUP BY u.id, u.name
         ORDER BY revenue_cents DESC
         """,
@@ -131,7 +131,7 @@ def cashier_day(user_id, day=None):
                COALESCE(SUM(CASE WHEN s.payment_method = 'mpesa'
                                  THEN s.total_cents ELSE 0 END), 0) AS mpesa_cents
         FROM sales s
-        WHERE s.cashier_id = ? AND date(s.created_at) = date(?) AND {_LIVE}
+        WHERE s.cashier_id = ? AND date(s.created_at, 'localtime') = date(?) AND {_LIVE}
         """,
         (user_id, day),
     )
@@ -141,7 +141,7 @@ def cashier_day(user_id, day=None):
         SELECT COALESCE(SUM(si.quantity - si.quantity_returned), 0) AS units
         FROM sale_items si
         JOIN sales s ON s.id = si.sale_id
-        WHERE s.cashier_id = ? AND date(s.created_at) = date(?) AND {_LIVE}
+        WHERE s.cashier_id = ? AND date(s.created_at, 'localtime') = date(?) AND {_LIVE}
         """,
         (user_id, day),
     )
@@ -169,7 +169,7 @@ def top_products(*, date_from=None, date_to=None, limit=10):
         FROM sale_items si
         JOIN sales s    ON s.id = si.sale_id
         JOIN products p ON p.id = si.product_id
-        WHERE date(s.created_at) BETWEEN date(?) AND date(?) AND {_LIVE}
+        WHERE date(s.created_at, 'localtime') BETWEEN date(?) AND date(?) AND {_LIVE}
         GROUP BY p.id, p.name, p.unit_type
         HAVING units_sold > 0
         ORDER BY revenue_cents DESC
@@ -206,12 +206,12 @@ def revenue_series(days=14):
     """Daily revenue for the last `days` days, for the dashboard trend."""
     return query_all(
         f"""
-        SELECT date(s.created_at)        AS day,
+        SELECT date(s.created_at, 'localtime')        AS day,
                SUM(s.total_cents)        AS revenue_cents,
                COUNT(*)                  AS sale_count
         FROM sales s
         WHERE s.created_at >= datetime('now', ?) AND {_LIVE}
-        GROUP BY date(s.created_at)
+        GROUP BY date(s.created_at, 'localtime')
         ORDER BY day
         """,
         (f"-{int(days)} days",),

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Deni - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">📒 Deni</h1>
+        <p class="page-subtitle">Goods taken now, paid for later. Every item and every shilling is written down.</p>
+    </div>
+</div>
+
+<div class="stat-row">
+    <div class="stat-card accent-coral">
+        <span class="stat-ico">💸</span>
+        <p class="stat-label">Owed to the shop</p>
+        <p class="stat-value">{{ summary.owed_cents | money }}</p>
+        <p class="stat-detail">everything not yet paid back</p>
+    </div>
+    <div class="stat-card accent-plum">
+        <span class="stat-ico">👥</span>
+        <p class="stat-label">People owing</p>
+        <p class="stat-value">{{ summary.people }}</p>
+        <p class="stat-detail">counted by phone number</p>
+    </div>
+    <div class="stat-card accent-sky">
+        <span class="stat-ico">⏳</span>
+        <p class="stat-label">Oldest unpaid</p>
+        <p class="stat-value">
+            {% if summary.oldest %}{{ summary.oldest | days_since }} day{{ '' if (summary.oldest | days_since) == 1 else 's' }}{% else %}&mdash;{% endif %}
+        </p>
+        <p class="stat-detail">{{ 'since ' ~ summary.oldest if summary.oldest else 'nobody owes anything' }}</p>
+    </div>
+</div>
+
+<div class="deni-layout">
+
+    {# ------------------------------------------------ record new deni -- #}
+    <section class="card till-col deni-form-card" id="record">
+        <header class="step-head">
+            <span class="step-num honey">+</span>
+            <div>
+                <h2>Record deni</h2>
+                <p>Who took what, and how to reach them</p>
+            </div>
+        </header>
+
+        {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+        <form method="POST" action="{{ url_for('deni.create') }}" id="deni-form" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-row">
+                <div>
+                    <label for="deni-phone">Phone number</label>
+                    <input type="tel" id="deni-phone" name="phone" inputmode="tel"
+                           value="{{ form.get('phone', '') }}" placeholder="0712 345 678" required>
+                    <p class="field-hint" id="deni-known" hidden></p>
+                </div>
+                <div>
+                    <label for="deni-name">Name</label>
+                    <input type="text" id="deni-name" name="customer_name"
+                           value="{{ form.get('customer_name', '') }}" placeholder="e.g. Mama Wanjiku" required>
+                </div>
+            </div>
+
+            <label for="deni-item-search">Item</label>
+            <input type="hidden" name="product_id" id="deni-product-id" value="{{ form.get('product_id', '') }}">
+            <div id="deni-item-chosen" class="deni-chosen" hidden></div>
+            <input type="text" id="deni-item-search" placeholder="Type the item name or scan its barcode…">
+            <div id="deni-item-results" class="search-results"></div>
+
+            <div class="form-row">
+                <div>
+                    <label for="deni-qty">Quantity</label>
+                    <div class="qty-field">
+                        <button type="button" data-step="-1" aria-label="One less">−</button>
+                        <input type="number" id="deni-qty" name="quantity" min="1" step="1"
+                               value="{{ form.get('quantity', 1) }}" required>
+                        <button type="button" data-step="1" aria-label="One more">+</button>
+                    </div>
+                </div>
+                <div>
+                    <label for="deni-day">Day taken</label>
+                    <input type="date" id="deni-day" name="taken_on" max="{{ today }}"
+                           value="{{ form.get('taken_on') or today }}">
+                </div>
+            </div>
+
+            <div class="deni-total" id="deni-total-box" hidden>
+                <span id="deni-total-detail"></span>
+                <strong id="deni-total"></strong>
+            </div>
+
+            <button type="submit" class="btn-primary btn-block btn-xl" id="deni-submit">📒 Save deni</button>
+            <p class="field-hint">The item comes off the shelf now. The price follows the till's rules.</p>
+        </form>
+    </section>
+
+    {# ---------------------------------------------------- who owes -- #}
+    <section class="card till-col">
+        <header class="step-head">
+            <span class="step-num" style="background:var(--coral)">!</span>
+            <div>
+                <h2>Who owes</h2>
+                <p>Oldest first &mdash; those are the ones to follow up</p>
+            </div>
+        </header>
+
+        {% if debtors %}
+        <div class="debtor-list">
+            {% for d in debtors %}
+            {% set age = d['oldest'] | days_since %}
+            <a class="debtor" href="{{ url_for('deni.person', phone=d['phone']) }}">
+                <span class="avatar" style="background: linear-gradient(135deg, #f3a6a0, #c86b8a)">{{ d['customer_name'][:1] | upper }}</span>
+                <span class="debtor-body">
+                    <strong>{{ d['customer_name'] }}</strong>
+                    <span class="cell-sub">{{ d['phone'] | phone }} &middot; {{ d['item_count'] }} item{{ '' if d['item_count'] == 1 else 's' }}</span>
+                </span>
+                <span class="debtor-owed">
+                    <strong>{{ d['owed_cents'] | money }}</strong>
+                    <span class="age {{ 'age-old' if age > 30 else ('age-mid' if age > 7 else '') }}">
+                        {{ 'today' if age == 0 else age ~ ' day' ~ ('' if age == 1 else 's') }}
+                    </span>
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-msg">🎉 Nobody owes the shop anything.</p>
+        {% endif %}
+    </section>
+</div>
+
+{# ------------------------------------------------------ the book -- #}
+<section class="dash-panel">
+    <div class="panel-head">
+        <h2><span class="panel-ico">📖</span> The book</h2>
+        <form method="GET" class="filter-bar" style="margin:0">
+            <input type="search" name="q" value="{{ filters.get('q', '') }}" placeholder="Name, phone or item">
+            <select name="show" onchange="this.form.submit()">
+                <option value="open" {{ 'selected' if show != 'all' }}>Still owing</option>
+                <option value="all" {{ 'selected' if show == 'all' }}>Everything</option>
+            </select>
+            <button type="submit" class="btn-secondary">Search</button>
+        </form>
+    </div>
+
+    {% if entries %}
+    <div class="table-scroll">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Day</th><th>Name</th><th>Phone</th><th>Item</th>
+                <th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th>
+                <th>Status</th><th>Recorded by</th>{% if is_admin %}<th></th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for e in entries %}
+            <tr class="{{ 'row-voided' if e['status'] == 'cancelled' }}">
+                <td>{{ e['taken_on'] }}<br><span class="cell-sub">{{ e['taken_on'] | days_since }}d ago</span></td>
+                <td><a href="{{ url_for('deni.person', phone=e['phone']) }}"><strong>{{ e['customer_name'] }}</strong></a></td>
+                <td class="mono"><a href="tel:{{ e['phone'] }}">{{ e['phone'] | phone }}</a></td>
+                <td>
+                    <div class="product-cell">
+                        <span class="thumb" style="width:38px;height:38px;font-size:19px">{% if e['image_path'] %}<img src="{{ product_image(e['image_path']) }}" alt="" loading="lazy">{% else %}{{ product_icon(e['product_name'], e['category']) }}{% endif %}</span>
+                        {{ e['product_name'] }}
+                    </div>
+                </td>
+                <td class="num">{{ e['quantity'] }}</td>
+                <td class="num">{{ e['unit_price_cents'] | money_plain }}</td>
+                <td class="num"><strong>{{ e['total_cents'] | money_plain }}</strong></td>
+                <td>
+                    {% if e['status'] == 'paid' %}
+                    <span class="badge-ok">Paid</span>
+                    {% elif e['status'] == 'cancelled' %}
+                    <span class="chip chip-muted">Cancelled</span>
+                    {% elif e['paid_cents'] %}
+                    <span class="badge-low">{{ (e['total_cents'] - e['paid_cents']) | money }} left</span>
+                    {% else %}
+                    <span class="badge-empty">Owing</span>
+                    {% endif %}
+                </td>
+                <td class="cell-sub">{{ e['recorded_by'] }}</td>
+                {% if is_admin %}
+                <td class="row-actions">
+                    {% if e['status'] == 'open' and not e['paid_cents'] %}
+                    <form method="POST" action="{{ url_for('deni.cancel', deni_id=e['id']) }}" class="inline-form"
+                          onsubmit="const r = prompt('Why cancel this deni? The item goes back into stock.'); if (!r) return false; this.reason.value = r;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="reason">
+                        <button type="submit" class="btn-link">Cancel</button>
+                    </form>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">Nothing in the book{{ ' matches that' if filters.get('q') }}.</p>
+    {% endif %}
+</section>
+
+<script type="application/json" id="debtor-data">{{ debtor_data | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='deni.js') }}"></script>
+{% endblock %}

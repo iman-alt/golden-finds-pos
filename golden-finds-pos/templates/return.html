@@ -5,7 +5,7 @@
 <div class="form-card">
     <h2>Return items</h2>
     <p class="form-subtitle">
-        Receipt {{ sale['receipt_number'] }} &middot; {{ sale['created_at'] }}
+        Receipt {{ sale['receipt_number'] }} &middot; {{ sale['created_at'] | local }}
         &middot; {{ sale['total_cents'] | money }}
     </p>
 

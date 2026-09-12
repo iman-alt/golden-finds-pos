@@ -15,6 +15,7 @@ from ..security import admin_required, current_user, login_required
 from ..services import offers, products, sales, stock
 from ..services.icons import icon_for
 from ..services.images import image_url
+from ..timeutil import to_local
 from ..services.products import ProductError
 from ..services.sales import SaleError
 from ..services.stock import StockError
@@ -206,7 +207,7 @@ def stock_in_recent():
             "quantity": row["quantity_change"],
             "expiry_date": row["expiry_date"],
             "user_name": row["user_name"],
-            "time": row["created_at"][11:16],
+            "time": to_local(row["created_at"])[11:16],
         }
         for row in rows
     ])

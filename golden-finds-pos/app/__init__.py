@@ -74,6 +74,9 @@ def _register_hooks(app):
     from .services.icons import icon_for
     from .services.images import image_url
 
+    from .timeutil import to_local
+
+    app.jinja_env.filters["local"] = to_local
     app.jinja_env.globals["product_image"] = image_url
     app.jinja_env.globals["product_icon"] = icon_for
     app.jinja_env.filters["money"] = format_money
@@ -90,6 +93,9 @@ def _register_blueprints(app):
     app.register_blueprint(reports.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(api.bp)
+
+    from .views import deni
+    app.register_blueprint(deni.bp)
 
 
 def _register_errors(app):

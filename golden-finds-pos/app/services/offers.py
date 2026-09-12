@@ -72,7 +72,7 @@ def get_expiry_alerts(today=None):
         LEFT JOIN offers o
                ON o.batch_id = b.id
               AND o.active = 1
-              AND (o.end_date IS NULL OR o.end_date > datetime('now'))
+              AND (o.end_date IS NULL OR o.end_date > datetime('now', 'localtime'))
         WHERE b.quantity_remaining > 0
           AND b.expiry_date IS NOT NULL
           AND p.active = 1
@@ -131,7 +131,7 @@ def get_active_offer(product_id, batch_id=None):
         WHERE product_id = ?
           AND active = 1
           AND start_date <= datetime('now')
-          AND (end_date IS NULL OR end_date > datetime('now'))
+          AND (end_date IS NULL OR end_date > datetime('now', 'localtime'))
           AND (batch_id IS NULL OR batch_id = COALESCE(?, batch_id))
         ORDER BY (batch_id IS NOT NULL) DESC, start_date DESC
         LIMIT 1
@@ -214,7 +214,7 @@ def list_active_offers():
         JOIN products p ON p.id = o.product_id
         LEFT JOIN users u ON u.id = o.approved_by
         WHERE o.active = 1
-          AND (o.end_date IS NULL OR o.end_date > datetime('now'))
+          AND (o.end_date IS NULL OR o.end_date > datetime('now', 'localtime'))
         ORDER BY o.start_date DESC
         """
     )

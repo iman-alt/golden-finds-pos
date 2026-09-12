@@ -240,10 +240,10 @@ def list_sales(*, date_from=None, date_to=None, cashier_id=None,
     params = []
 
     if date_from:
-        where.append("date(s.created_at) >= date(?)")
+        where.append("date(s.created_at, 'localtime') >= date(?)")
         params.append(date_from)
     if date_to:
-        where.append("date(s.created_at) <= date(?)")
+        where.append("date(s.created_at, 'localtime') <= date(?)")
         params.append(date_to)
     if cashier_id:
         where.append("s.cashier_id = ?")

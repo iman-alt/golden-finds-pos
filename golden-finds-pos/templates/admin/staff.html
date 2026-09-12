@@ -32,7 +32,7 @@
                             </select>
                         </form>
                     </td>
-                    <td>{{ person['last_login'] or 'never' }}</td>
+                    <td>{{ (person['last_login'] | local) or 'never' }}</td>
                     <td class="row-actions">
                         <form method="POST" class="inline-form"
                               action="{{ url_for('admin.staff_set_active', user_id=person['id']) }}">

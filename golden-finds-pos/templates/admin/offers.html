@@ -28,7 +28,7 @@
                 <td class="num">
                     {{ ((o['retail_price_cents'] - o['offer_price_cents']) / o['retail_price_cents'] * 100) | round | int }}%
                 </td>
-                <td>{{ o['start_date'] }}</td>
+                <td>{{ o['start_date'] | local }}</td>
                 <td>{{ o['end_date'] or 'until ended' }}</td>
                 <td>{{ o['approved_by_name'] or '—' }}</td>
                 <td class="row-actions">

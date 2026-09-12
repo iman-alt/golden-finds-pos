@@ -64,6 +64,16 @@ separately popular items will share receipts by chance. The owner can pin
 pairs by hand. At the till it is one strip of chips, and whoever is
 serving can hide it for good.
 
+### Deni
+
+A book for goods taken now and paid for later, open to everyone who
+serves. Each entry has the name, phone number, item, quantity, price and
+day. The goods come off the shelf when the deni is written down, and the
+price follows the same rules as the till. Repayments clear the oldest
+items first; a person is recognised by their phone number however it is
+typed. Only the owner can cancel an entry, which puts the item back into
+the batch it came from.
+
 ### Expiry and offers
 
 Products marked as expiring are received in batches and always sold

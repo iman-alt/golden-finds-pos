@@ -45,7 +45,7 @@
     {% for s in sales %}
         <tr class="{{ 'row-voided' if s['status'] == 'voided' }}">
             <td class="mono">{{ s['receipt_number'] }}</td>
-            <td>{{ s['created_at'] }}</td>
+            <td>{{ s['created_at'] | local }}</td>
             <td>{{ s['cashier_name'] }}</td>
             <td>
                 {{ s['payment_method'] }}

@@ -67,7 +67,7 @@ OWNER_PAGES = [
     "/reports/", "/reports/products",
     "/reports/daily.csv", "/admin/staff", "/admin/offers", "/admin/audit",
     "/admin/pairings",
-    "/change-pin",
+    "/change-pin", "/deni/",
 ]
 
 
@@ -91,7 +91,7 @@ def test_detail_pages_render(client, shop):
         assert client.get(path).status_code == 200, path
 
 
-CASHIER_PAGES = ["/", "/sell", "/products", "/sales", "/my-day"]
+CASHIER_PAGES = ["/", "/sell", "/products", "/sales", "/my-day", "/deni/"]
 
 
 @pytest.mark.parametrize("path", CASHIER_PAGES)

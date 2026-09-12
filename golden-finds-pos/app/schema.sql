@@ -241,6 +241,45 @@ CREATE TABLE IF NOT EXISTS pinned_pairings (
     CHECK (product_a < product_b)
 );
 
+-- ------------------------------------------------------------------ DENI --
+-- Goods taken now and paid for later. One row per item handed over. The
+-- goods leave the shelf the moment the deni is recorded, exactly like a
+-- sale; only the money comes later. A person is identified by their phone
+-- number, stored normalised as 07XXXXXXXX / 01XXXXXXXX.
+CREATE TABLE IF NOT EXISTS deni (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_name     TEXT    NOT NULL,
+    phone             TEXT    NOT NULL,
+    product_id        INTEGER NOT NULL REFERENCES products (id),
+    quantity          INTEGER NOT NULL CHECK (quantity > 0),
+    unit_price_cents  INTEGER NOT NULL CHECK (unit_price_cents >= 0),
+    total_cents       INTEGER NOT NULL CHECK (total_cents >= 0),
+    paid_cents        INTEGER NOT NULL DEFAULT 0 CHECK (paid_cents >= 0),
+    status            TEXT    NOT NULL DEFAULT 'open'
+                              CHECK (status IN ('open', 'paid', 'cancelled')),
+    taken_on          TEXT    NOT NULL,
+    created_by        INTEGER NOT NULL REFERENCES users (id),
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    cancelled_by      INTEGER REFERENCES users (id),
+    cancelled_at      TEXT,
+    cancel_reason     TEXT,
+    CHECK (paid_cents <= total_cents)
+);
+CREATE INDEX IF NOT EXISTS idx_deni_phone ON deni (phone, status);
+CREATE INDEX IF NOT EXISTS idx_deni_taken ON deni (taken_on);
+
+-- Each repayment, whatever entries it was spread across.
+CREATE TABLE IF NOT EXISTS deni_payments (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    phone          TEXT    NOT NULL,
+    customer_name  TEXT,
+    amount_cents   INTEGER NOT NULL CHECK (amount_cents > 0),
+    method         TEXT    NOT NULL CHECK (method IN ('cash', 'mpesa')),
+    received_by    INTEGER NOT NULL REFERENCES users (id),
+    created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_deni_payments_phone ON deni_payments (phone);
+
 -- -------------------------------------------------------------- SETTINGS --
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,

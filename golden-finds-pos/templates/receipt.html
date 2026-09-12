@@ -10,7 +10,7 @@
             <h1>{{ shop_name }}</h1>
             <p class="receipt-number">{{ sale['receipt_number'] }}</p>
             <p class="receipt-meta">
-                {{ sale['created_at'] }}<br>
+                {{ sale['created_at'] | local }}<br>
                 Served by {{ sale['cashier_name'] }}
                 {% if sale['customer_name'] %}<br>Customer: {{ sale['customer_name'] }}{% endif %}
             </p>

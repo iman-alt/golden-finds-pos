@@ -98,7 +98,7 @@
         <tbody>
         {% for m in movements %}
             <tr>
-                <td>{{ m['created_at'] }}</td>
+                <td>{{ m['created_at'] | local }}</td>
                 <td>{{ m['movement_type'].replace('_', ' ') }}</td>
                 <td class="num {{ 'negative' if m['quantity_change'] < 0 }}">
                     {{ '%+d' % m['quantity_change'] }}

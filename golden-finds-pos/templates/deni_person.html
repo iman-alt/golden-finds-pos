@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} - Deni{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('deni.index') }}">← Back to the deni book</a></p>
+
+<section class="hero">
+    <div>
+        <p class="hero-date">📒 Deni</p>
+        <h1>{{ name }}</h1>
+        <p class="hero-line">
+            📞 <a href="tel:{{ phone }}" style="color:#fff;text-decoration:underline">{{ phone | phone }}</a>
+            &nbsp;·&nbsp;
+            {% if owed_cents %}
+            owes <strong>{{ owed_cents | money }}</strong>
+            {% else %}
+            <strong>all paid up</strong> 🎉
+            {% endif %}
+        </p>
+    </div>
+</section>
+
+<div class="two-col">
+
+    <section class="dash-panel">
+        <div class="panel-head"><h2><span class="panel-ico">📖</span> What they took</h2></div>
+        <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr><th>Day</th><th>Item</th><th class="num">Qty</th><th class="num">Price</th>
+                    <th class="num">Total</th><th>Status</th><th>By</th></tr>
+            </thead>
+            <tbody>
+            {% for e in items %}
+                <tr class="{{ 'row-voided' if e['status'] == 'cancelled' }}">
+                    <td>{{ e['taken_on'] }}</td>
+                    <td>
+                        <div class="product-cell">
+                            <span class="thumb" style="width:38px;height:38px;font-size:19px">{% if e['image_path'] %}<img src="{{ product_image(e['image_path']) }}" alt="" loading="lazy">{% else %}{{ product_icon(e['product_name'], e['category']) }}{% endif %}</span>
+                            {{ e['product_name'] }}
+                        </div>
+                    </td>
+                    <td class="num">{{ e['quantity'] }}</td>
+                    <td class="num">{{ e['unit_price_cents'] | money_plain }}</td>
+                    <td class="num"><strong>{{ e['total_cents'] | money_plain }}</strong></td>
+                    <td>
+                        {% if e['status'] == 'paid' %}<span class="badge-ok">Paid</span>
+                        {% elif e['status'] == 'cancelled' %}<span class="chip chip-muted">Cancelled</span>
+                        {% elif e['paid_cents'] %}<span class="badge-low">{{ (e['total_cents'] - e['paid_cents']) | money }} left</span>
+                        {% else %}<span class="badge-empty">Owing</span>{% endif %}
+                    </td>
+                    <td class="cell-sub">{{ e['recorded_by'] }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </section>
+
+    <div>
+        {% if owed_cents %}
+        <section class="card till-col" style="margin-bottom:20px">
+            <header class="step-head">
+                <span class="step-num sage">KSh</span>
+                <div>
+                    <h2>They're paying</h2>
+                    <p>The oldest items are cleared first</p>
+                </div>
+            </header>
+
+            <form method="POST" action="{{ url_for('deni.pay') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="phone" value="{{ phone }}">
+                <input type="hidden" name="back" value="{{ request.path }}">
+
+                <div class="pay-toggle" role="group" aria-label="How they paid">
+                    <label class="pay-option selected" data-method="cash" style="margin:0">
+                        <input type="radio" name="method" value="cash" checked hidden> 💵 Cash
+                    </label>
+                    <label class="pay-option" data-method="mpesa" style="margin:0">
+                        <input type="radio" name="method" value="mpesa" hidden> 📱 M-Pesa
+                    </label>
+                </div>
+
+                <div class="received-display">
+                    <span class="currency">KSh</span>
+                    <label for="pay-amount" class="visually-hidden">Amount paid</label>
+                    <input type="number" id="pay-amount" name="amount" step="1" min="1"
+                           max="{{ (owed_cents / 100) | round(2) }}" inputmode="numeric" placeholder="0" required>
+                    <button type="button" class="btn-link" id="pay-full" data-owed="{{ (owed_cents / 100) | round(2) }}">All of it</button>
+                </div>
+
+                <button type="submit" class="btn-primary btn-block btn-xl">Record payment</button>
+            </form>
+        </section>
+        {% endif %}
+
+        <section class="dash-panel">
+            <div class="panel-head"><h2><span class="panel-ico sage">💵</span> Paid back</h2></div>
+            {% if payments %}
+            <ul class="alert-list">
+                {% for p in payments %}
+                <li class="alert-row">
+                    <span class="alert-name">
+                        {{ '📱' if p['method'] == 'mpesa' else '💵' }}
+                        <span>{{ (p['created_at'] | local)[:10] }}<br><span class="cell-sub">received by {{ p['received_by_name'] }}</span></span>
+                    </span>
+                    <strong style="color:var(--sage-deep)">{{ p['amount_cents'] | money }}</strong>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="empty-msg">No payments yet.</p>
+            {% endif %}
+        </section>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.pay-option').forEach(option => {
+        option.addEventListener('click', () => {
+            document.querySelectorAll('.pay-option').forEach(o => o.classList.remove('selected'));
+            option.classList.add('selected');
+            option.querySelector('input').checked = true;
+        });
+    });
+    const full = document.getElementById('pay-full');
+    if (full) full.addEventListener('click', () => {
+        document.getElementById('pay-amount').value = full.dataset.owed;
+    });
+</script>
+{% endblock %}

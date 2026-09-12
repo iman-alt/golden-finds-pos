@@ -28,7 +28,7 @@
     <tbody>
     {% for e in entries %}
         <tr class="{{ 'row-attention' if e['action'] in ('login_failed', 'sale_voided', 'price_changed') }}">
-            <td>{{ e['created_at'] }}</td>
+            <td>{{ e['created_at'] | local }}</td>
             <td>{{ e['user_name'] or 'unknown' }}</td>
             <td>{{ e['action'].replace('_', ' ') }}</td>
             <td class="cell-sub">{{ e['detail'] or '' }}</td>
