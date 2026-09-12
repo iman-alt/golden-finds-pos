@@ -13,3 +13,4 @@ instance/
 htmlcov/
 golden-finds-pos/static/product_images/*
 !golden-finds-pos/static/product_images/.gitkeep
+backups/

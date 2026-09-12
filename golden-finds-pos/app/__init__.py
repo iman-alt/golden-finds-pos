@@ -127,6 +127,53 @@ def _register_cli(app):
             raise SystemExit(f"Could not create the account: {err}")
         click.echo(f"Owner account '{name}' created (id {user_id}).")
 
+    @app.cli.command("backup")
+    @click.option("--to", "destination", default=None,
+                  help="Folder to write the backup into.")
+    @click.option("--keep", default=30, show_default=True,
+                  help="How many backups to keep.")
+    def _backup(destination, keep):
+        """Take a verified snapshot of the database."""
+        from .backup import BackupError, create_backup
+
+        destination = destination or app.config["BACKUP_DIR"]
+        try:
+            path = create_backup(app.config["DATABASE"], destination, keep=keep)
+        except BackupError as err:
+            raise SystemExit(f"Backup failed: {err}")
+        click.echo(f"Backed up and verified: {path}")
+
+    @app.cli.command("restore")
+    @click.argument("backup_file")
+    @click.confirmation_option(
+        prompt="This replaces the live database. The current one is kept "
+               "alongside it. Continue?"
+    )
+    def _restore(backup_file):
+        """Restore the database from a backup file."""
+        from .backup import BackupError, restore_backup
+
+        try:
+            path = restore_backup(backup_file, app.config["DATABASE"])
+        except BackupError as err:
+            raise SystemExit(f"Restore failed: {err}")
+        click.echo(f"Restored to {path}. Restart the app.")
+
+    @app.cli.command("list-backups")
+    def _list_backups():
+        """Show the backups that exist and how old they are."""
+        from .backup import list_backups
+
+        backups = list_backups(app.config["BACKUP_DIR"])
+        if not backups:
+            click.echo(f"No backups in {app.config['BACKUP_DIR']}")
+            raise SystemExit(1)
+        for entry in backups:
+            click.echo(
+                f"{entry['when']:%Y-%m-%d %H:%M}  {entry['size_kb']:>6} KB  "
+                f"{entry['path'].name}"
+            )
+
     @app.cli.command("check-stock")
     def _check_stock():
         """Report any product whose stock disagrees with the ledger."""

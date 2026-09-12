@@ -62,6 +62,16 @@ class Config:
 
     SHOP_NAME = os.environ.get("SHOP_NAME", "Golden Finds")
 
+    # Where `flask backup` writes to. Point this at a OneDrive or Google
+    # Drive folder and the sync client carries the copy off the machine -
+    # which is the whole point of taking it.
+    BACKUP_DIR = os.environ.get("BACKUP_DIR", str(BASE_DIR / "backups"))
+
+    # The dashboard nags once backups are older than this. A backup job
+    # that quietly stopped running is the usual way a shop like this
+    # loses its data.
+    BACKUP_WARN_AFTER_HOURS = int(os.environ.get("BACKUP_WARN_AFTER_HOURS", 48))
+
 
 class TestConfig(Config):
     TESTING = True

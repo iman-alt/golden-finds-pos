@@ -34,6 +34,15 @@
     </div>
 </div>
 
+{% if backup_warning %}
+<div class="banner banner-warn">
+    <strong>Backup:</strong> {{ backup_warning }}
+    Everything this shop knows sits in one file &mdash; if this machine is
+    lost, so is all of it. See <code>docs/BACKUP.md</code> for the
+    scheduled-task setup.
+</div>
+{% endif %}
+
 {% if discrepancies %}
 {# Silent stock drift was one of the original bugs. If it ever happens
    again, the owner is told rather than finding out at stock-take. #}

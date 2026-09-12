@@ -2,8 +2,9 @@
 The dashboard - what needs attention today.
 """
 
-from flask import Blueprint, render_template
+from flask import Blueprint, current_app, render_template
 
+from ..backup import last_backup_age
 from ..security import current_user, login_required
 from ..services import offers, reports, stock
 
@@ -37,6 +38,27 @@ def index():
             "inventory": reports.inventory_value(),
             "discrepancies": stock.find_discrepancies(),
             "credit": reports.outstanding_credit(),
+            "backup_warning": _backup_warning(),
         })
 
     return render_template("dashboard.html", **context)
+
+
+def _backup_warning():
+    """
+    Says so plainly when the backups have gone stale or never started.
+    Everything the shop knows is in one file; the owner should not have to
+    remember to go and check on it.
+    """
+    age = last_backup_age(current_app.config["BACKUP_DIR"])
+    if age is None:
+        return "No backup has ever been taken of this shop's data."
+
+    hours = age.total_seconds() / 3600
+    if hours > current_app.config["BACKUP_WARN_AFTER_HOURS"]:
+        days = int(hours // 24)
+        return (
+            f"The last backup was {days} day{'' if days == 1 else 's'} ago."
+            if days else f"The last backup was {int(hours)} hours ago."
+        )
+    return None
