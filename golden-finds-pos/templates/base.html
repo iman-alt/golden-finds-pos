@@ -8,6 +8,8 @@
 {# Every fetch() needs this, so it is available on the page rather than
    threaded through each script. #}
 <meta name="csrf-token" content="{{ csrf_token() }}">
+{# The till changes what it offers depending on who is standing at it. #}
+<meta name="user-role" content="{{ current_user['role'] if current_user else '' }}">
 </head>
 <body>
 
@@ -20,12 +22,18 @@
            class="{{ 'active' if request.endpoint == 'dashboard.index' }}">Dashboard</a>
         <a href="{{ url_for('sell.screen') }}"
            class="{{ 'active' if request.endpoint == 'sell.screen' }}">Sell</a>
+        {% if current_user['role'] == 'admin' %}
         <a href="{{ url_for('inventory.stock_in_screen') }}"
            class="{{ 'active' if request.endpoint == 'inventory.stock_in_screen' }}">Stock In</a>
+        {% endif %}
         <a href="{{ url_for('inventory.product_list') }}"
            class="{{ 'active' if request.endpoint == 'inventory.product_list' }}">Products</a>
         <a href="{{ url_for('sell.history') }}"
            class="{{ 'active' if request.endpoint == 'sell.history' }}">Sales</a>
+        {% if current_user['role'] != 'admin' %}
+        <a href="{{ url_for('sell.my_day') }}"
+           class="{{ 'active' if request.endpoint == 'sell.my_day' }}">My day</a>
+        {% endif %}
         {% if current_user['role'] == 'admin' %}
         <a href="{{ url_for('reports.index') }}"
            class="{{ 'active' if request.blueprint == 'reports' }}">Reports</a>

@@ -8,9 +8,29 @@
  */
 
 :root {
-    --pink:        #d6336c;
-    --pink-dark:   #ad2457;
-    --pink-light:  #fff0f5;
+    /*
+     * Gold, for Golden Finds.
+     *
+     * Gold is awkward to build an interface from: a true metallic gold on
+     * white fails contrast badly, and gold text is near-illegible at small
+     * sizes. So the palette splits it in three - a deep gold that is safe
+     * for text and links, a bright gold for fills, and a pale tint for
+     * backgrounds. Buttons put near-black ink on the bright gold rather
+     * than white, which is both far more readable and closer to how gold
+     * actually looks on a sign.
+     *
+     * The variables keep their original names so that every rule below
+     * did not have to be rewritten to change the colour.
+     */
+    --gold:        #c9a227;   /* fills, bars, active states */
+    --gold-bright: #e0b93d;   /* hover on a fill */
+    --gold-ink:    #7a5d0a;   /* text and links: passes contrast on white */
+    --gold-tint:   #fdf6e0;   /* panel and chip backgrounds */
+
+    --pink:        var(--gold-ink);
+    --pink-dark:   #5e4708;
+    --pink-light:  var(--gold-tint);
+
     --ink:         #1f2328;
     --ink-soft:    #5c6370;
     --ink-faint:   #8b929e;
@@ -76,8 +96,19 @@ a:hover { text-decoration: underline; }
 .nav-brand {
     font-weight: 700;
     font-size: 17px;
-    color: var(--pink);
+    color: var(--gold-ink);
     white-space: nowrap;
+}
+
+/* The one place a literal metallic gradient earns its keep: the name. */
+.auth-brand {
+    background: linear-gradient(100deg, #a8801a 0%, #e8c757 45%, #a8801a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: #a8801a;
+}
+@supports (-webkit-text-fill-color: transparent) {
+    .auth-brand { -webkit-text-fill-color: transparent; }
 }
 .nav-brand:hover { text-decoration: none; }
 
@@ -171,8 +202,17 @@ button, .btn-primary, .btn-secondary, .btn-danger {
     font-weight: 600;
     text-align: center;
 }
-.btn-primary { background: var(--pink); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--pink-dark); text-decoration: none; }
+/* Dark ink on gold, not white - white on gold is unreadable. */
+.btn-primary {
+    background: var(--gold);
+    color: #2a2103;
+    border-color: #b08e1c;
+}
+.btn-primary:hover:not(:disabled) {
+    background: var(--gold-bright);
+    color: #2a2103;
+    text-decoration: none;
+}
 .btn-secondary { background: var(--panel); color: var(--ink); border-color: var(--line); }
 .btn-secondary:hover { background: var(--bg); text-decoration: none; }
 .btn-danger { background: var(--red); color: #fff; }
@@ -570,7 +610,6 @@ kbd {
 
 .cart-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: 10px;
     padding: 10px 0;
@@ -635,6 +674,113 @@ kbd {
     color: var(--blue);
 }
 #checkout-btn { margin-top: 16px; padding: 15px; font-size: 16px; }
+
+/* -------------------------------------------------- icons and pairings -- */
+
+/*
+ * A picture per cart line, so the cashier can check a cart against what
+ * is on the counter without reading every word of it.
+ */
+.cart-item-icon {
+    flex: 0 0 auto;
+    font-size: 22px;
+    line-height: 1;
+    width: 30px;
+    text-align: center;
+    /* Emoji carry their own colour; this keeps them from looking louder
+       than the product name beside them. */
+    filter: saturate(.85);
+}
+.cart-item-body { flex: 1; min-width: 0; }
+.search-result-icon { font-size: 17px; margin-right: 8px; flex: 0 0 auto; }
+.search-result-item > span:nth-child(2) { flex: 1; }
+
+.pairing-strip {
+    margin-top: 14px;
+    padding: 13px 15px;
+    background: var(--gold-tint);
+    border: 1px solid #f0e2b4;
+    border-radius: var(--radius);
+}
+.pairing-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 9px;
+}
+.pairing-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--gold-ink);
+}
+.pairing-list { display: flex; gap: 8px; flex-wrap: wrap; }
+.pairing-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 13px;
+    border: 1px solid #e8d79f;
+    border-radius: 99px;
+    background: var(--panel);
+    font-size: 13.5px;
+    font-weight: 500;
+}
+.pairing-chip:hover { border-color: var(--gold); background: #fffdf6; }
+.pairing-chip-icon { font-size: 16px; }
+.pairing-chip-price { color: var(--ink-soft); font-size: 12.5px; }
+
+.pair-join { color: var(--ink-faint); margin: 0 5px; }
+
+/* ------------------------------------------------- expiry strip (till) -- */
+
+.expiry-strip {
+    margin-bottom: 16px;
+    background: var(--amber-bg);
+    border: 1px solid #f0dcae;
+    border-radius: var(--radius);
+    padding: 11px 15px;
+}
+.expiry-strip summary {
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--amber);
+    list-style: none;
+}
+.expiry-strip summary::-webkit-details-marker { display: none; }
+.expiry-strip summary::before { content: "⚠ "; }
+.expiry-strip-count {
+    display: inline-block;
+    min-width: 21px;
+    padding: 1px 7px;
+    border-radius: 99px;
+    background: var(--amber);
+    color: #fff;
+    text-align: center;
+    font-weight: 700;
+}
+.expiry-strip-hint { font-weight: 400; color: var(--ink-soft); }
+.expiry-strip-items {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 11px;
+}
+.expiry-pill {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    background: var(--panel);
+    border-left: 3px solid var(--amber);
+    font-size: 13px;
+}
+.expiry-pill.tier-urgent, .expiry-pill.tier-expired { border-left-color: var(--red); }
+.expiry-pill span { font-size: 11.5px; color: var(--ink-soft); }
+.expiry-pill-offer { color: var(--green) !important; font-weight: 600; }
 
 /* -------------------------------------------------------------- modal -- */
 

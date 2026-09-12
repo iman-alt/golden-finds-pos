@@ -8,7 +8,7 @@ from flask import (
 
 from ..db import transaction
 from ..security import admin_required, current_user, login_required
-from ..services import customers, sales, users
+from ..services import customers, offers, sales, users
 from ..services.sales import SaleError
 
 bp = Blueprint("sell", __name__)
@@ -17,7 +17,23 @@ bp = Blueprint("sell", __name__)
 @bp.get("/sell")
 @login_required
 def screen():
-    return render_template("sell.html")
+    """
+    The till.
+
+    Whoever is standing here also gets told what is about to expire.
+    Both roles see it, because the person actually handing goods over is
+    the one who can say "this one is on offer today" - but only the owner
+    gets the button that sets the price.
+    """
+    alerts = [
+        alert for alert in offers.get_expiry_alerts()
+        if alert["tier"] in ("urgent", "consider_offer", "expired")
+    ]
+    return render_template(
+        "sell.html",
+        expiring=alerts,
+        is_admin=current_user()["role"] == "admin",
+    )
 
 
 @bp.get("/receipt/<int:sale_id>")
@@ -60,6 +76,35 @@ def history():
     )
 
 
+@bp.get("/my-day")
+@login_required
+def my_day():
+    """
+    A shopkeeper's own handover sheet: what they sold today and what
+    should be in the drawer. No costs, no margins - the owner's figures
+    stay the owner's.
+    """
+    from datetime import date
+
+    from ..services import reports
+
+    user = current_user()
+    try:
+        day = date.fromisoformat(request.args.get("date", ""))
+    except ValueError:
+        day = date.today()
+
+    return render_template(
+        "my_day.html",
+        day=day,
+        is_today=day == date.today(),
+        summary=reports.cashier_day(user["id"], day),
+        sales=sales.list_sales(date_from=day, date_to=day,
+                               cashier_id=user["id"], limit=100),
+        expiring=offers.get_expiry_alerts(),
+    )
+
+
 @bp.post("/sales/<int:sale_id>/void")
 @admin_required
 def void(sale_id):
@@ -84,7 +129,7 @@ def void(sale_id):
 
 
 @bp.route("/sales/<int:sale_id>/return", methods=["GET", "POST"])
-@login_required
+@admin_required
 def refund(sale_id):
     sale = sales.get_sale(sale_id)
     if sale is None:
@@ -121,7 +166,7 @@ def customer_list():
 
 
 @bp.post("/customers")
-@login_required
+@admin_required
 def customer_create():
     from ..money import MoneyError, parse_money
     from ..services.customers import CustomerError
@@ -161,7 +206,7 @@ def customer_detail(customer_id):
 
 
 @bp.post("/customers/<int:customer_id>/pay")
-@login_required
+@admin_required
 def customer_pay(customer_id):
     from ..money import MoneyError, parse_money
     from ..services.customers import CustomerError

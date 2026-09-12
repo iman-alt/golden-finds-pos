@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}What sells together - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">What sells together</h1>
+        <p class="page-subtitle">
+            Counted from your own receipts over the last {{ days }} days.
+        </p>
+    </div>
+    <form method="GET" class="filter-bar">
+        <select name="days" onchange="this.form.submit()">
+            {% for option in [30, 90, 180, 365] %}
+            <option value="{{ option }}" {{ 'selected' if days == option }}>Last {{ option }} days</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<section class="dash-panel">
+    <h2>Found in your sales</h2>
+    <p class="field-hint">
+        <strong>Together</strong> is how many receipts had both.
+        <strong>Follow-through</strong> is how often buying the first one
+        meant buying the second &mdash; that is the number worth acting on,
+        since two popular items will share receipts by chance alone.
+        Pin a pair to keep it suggested at the till regardless.
+    </p>
+
+    {% if discovered %}
+    <div class="table-scroll">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Pair</th><th class="num">Together</th>
+                <th class="num">Follow-through</th><th class="num">Both in stock</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in discovered %}
+            <tr>
+                <td>
+                    <strong>{{ row['name_a'] }}</strong>
+                    <span class="pair-join">+</span>
+                    <strong>{{ row['name_b'] }}</strong>
+                    {% if row['pinned'] %}<span class="chip">pinned</span>{% endif %}
+                </td>
+                <td class="num">{{ row['together'] }}</td>
+                <td class="num">{{ (row['confidence'] * 100) | round | int }}%</td>
+                <td class="num">
+                    {% if row['stock_a'] > 0 and row['stock_b'] > 0 %}
+                        yes
+                    {% else %}
+                        <span class="badge-empty">
+                            {{ row['name_a'] if row['stock_a'] == 0 else row['name_b'] }} out
+                        </span>
+                    {% endif %}
+                </td>
+                <td class="row-actions">
+                    {% if not row['pinned'] %}
+                    <form method="POST" action="{{ url_for('admin.pairing_pin') }}" class="inline-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="product_a" value="{{ row['product_a'] }}">
+                        <input type="hidden" name="product_b" value="{{ row['product_b'] }}">
+                        <button type="submit" class="btn-link">Pin</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">
+        Not enough sales yet to see a pattern. This fills in on its own as
+        the shop trades &mdash; a pair has to appear on at least three
+        receipts before it shows up here.
+    </p>
+    {% endif %}
+</section>
+
+<div class="two-col">
+
+    <section class="dash-panel">
+        <h2>Pinned pairs</h2>
+        <p class="field-hint">
+            Yours, kept whatever the numbers say. These are suggested at
+            the till first.
+        </p>
+        {% if pinned %}
+        <table class="data-table">
+            <thead>
+                <tr><th>Pair</th><th>Note</th><th>Pinned by</th><th></th></tr>
+            </thead>
+            <tbody>
+            {% for row in pinned %}
+                <tr>
+                    <td>
+                        {{ row['name_a'] }} <span class="pair-join">+</span> {{ row['name_b'] }}
+                    </td>
+                    <td class="cell-sub">{{ row['note'] or '' }}</td>
+                    <td class="cell-sub">{{ row['pinned_by_name'] or '—' }}</td>
+                    <td class="row-actions">
+                        <form method="POST" action="{{ url_for('admin.pairing_unpin') }}" class="inline-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="product_a" value="{{ row['product_a'] }}">
+                            <input type="hidden" name="product_b" value="{{ row['product_b'] }}">
+                            <button type="submit" class="btn-link">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-msg">No pinned pairs yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="dash-panel">
+        <h2>Pin a pair yourself</h2>
+        <form method="POST" action="{{ url_for('admin.pairing_pin') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <label for="product_a">This product</label>
+            <select id="product_a" name="product_a" required>
+                {% for p in products %}
+                <option value="{{ p['id'] }}">{{ p['name'] }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="product_b">goes with</label>
+            <select id="product_b" name="product_b" required>
+                {% for p in products %}
+                <option value="{{ p['id'] }}">{{ p['name'] }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="note">Note (optional)</label>
+            <input type="text" id="note" name="note" placeholder="e.g. stand them together">
+
+            <button type="submit" class="btn-primary">Pin this pair</button>
+        </form>
+    </section>
+
+</div>
+{% endblock %}

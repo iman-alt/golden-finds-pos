@@ -9,6 +9,7 @@
  */
 
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
+const isOwner = document.querySelector('meta[name="user-role"]').content === 'admin';
 
 const scannerInput = document.getElementById('scanner-input');
 const scanMessage = document.getElementById('scan-message');
@@ -110,6 +111,17 @@ async function lookupAndAdd(barcode) {
         const res = await fetch(`/api/product/${encodeURIComponent(barcode)}`);
         if (res.status === 401) { window.location.href = '/login'; return; }
         if (res.status === 404) {
+            if (!isOwner) {
+                // A shopkeeper cannot add products, so sending them to a
+                // form they are not allowed to submit would just be a
+                // dead end. Tell them what to do instead.
+                showMessage(
+                    `Barcode ${barcode} isn't in the system yet. ` +
+                    `Set it aside and ask Mum to add it.`,
+                    'warning',
+                );
+                return;
+            }
             // Unknown barcode: straight to registration with it prefilled.
             window.location.href = `/add-product?barcode=${encodeURIComponent(barcode)}`;
             return;
@@ -143,11 +155,16 @@ async function runSearch(query) {
             const name = document.createElement('span');
             name.textContent = product.name;
 
+            const icon = document.createElement('span');
+            icon.className = 'search-result-icon';
+            icon.textContent = product.icon || '📦';
+            icon.setAttribute('aria-hidden', 'true');
+
             const meta = document.createElement('span');
             meta.className = 'search-result-meta';
             meta.textContent = `${product.retail_price_display} · ${product.stock_quantity} in stock`;
 
-            item.append(name, meta);
+            item.append(icon, name, meta);
             item.addEventListener('click', () => {
                 addToCart(product.id);
                 scannerInput.value = '';
@@ -227,7 +244,15 @@ function render() {
         const row = document.createElement('div');
         row.className = 'cart-item';
 
+        // The icon comes from the server so that the cart, the search
+        // list and the pairing prompt all show the same one.
+        const icon = document.createElement('span');
+        icon.className = 'cart-item-icon';
+        icon.textContent = line.icon || '📦';
+        icon.setAttribute('aria-hidden', 'true');
+
         const left = document.createElement('div');
+        left.className = 'cart-item-body';
         const name = document.createElement('div');
         name.className = 'cart-item-name';
         name.textContent = line.name;
@@ -264,13 +289,14 @@ function render() {
             button('×', 'Remove', () => removeFromCart(line.product_id), 'cart-item-remove'),
         );
 
-        row.append(left, controls);
+        row.append(icon, left, controls);
         cartItemsEl.appendChild(row);
     });
 
     cartTotalEl.textContent = money(subtotalCents);
     checkoutBtn.disabled = busy;
     updateChange();
+    refreshPairings();
 }
 
 function button(label, title, onClick, extraClass = '') {
@@ -288,6 +314,84 @@ function span(text) {
     const el = document.createElement('span');
     el.textContent = text;
     return el;
+}
+
+// ------------------------------------------------------------- pairings --
+
+/*
+ * "Goes well with" - what customers who bought the last item usually took
+ * with it, from the shop's own receipts. A prompt to offer something, not
+ * an instruction: one tap adds it, ignoring it costs nothing.
+ *
+ * The person serving can hide this strip for good, and the choice is
+ * remembered on their machine.
+ */
+const pairingStrip = document.getElementById('pairing-strip');
+const pairingList = document.getElementById('pairing-list');
+const pairingHide = document.getElementById('pairing-hide');
+
+function pairingsHidden() {
+    try {
+        return localStorage.getItem('hidePairings') === '1';
+    } catch (err) {
+        return false;  // private window or blocked storage: just show them
+    }
+}
+
+if (pairingHide) {
+    pairingHide.addEventListener('click', () => {
+        try {
+            localStorage.setItem('hidePairings', '1');
+        } catch (err) { /* nothing to do; it stays hidden for this visit */ }
+        pairingStrip.hidden = true;
+    });
+}
+
+async function refreshPairings() {
+    if (!pairingStrip || pairingsHidden()) return;
+
+    if (cart.length === 0) {
+        pairingStrip.hidden = true;
+        return;
+    }
+
+    // Suggest against the item added most recently - that is what the
+    // customer is holding, and what the prompt should follow.
+    const last = cart[cart.length - 1].id;
+    try {
+        const res = await fetch(`/api/pairings/${last}`);
+        if (!res.ok) return;
+        const suggestions = (await res.json())
+            .filter(s => !cart.some(item => item.id === s.id));
+
+        if (suggestions.length === 0) {
+            pairingStrip.hidden = true;
+            return;
+        }
+
+        pairingList.replaceChildren();
+        suggestions.forEach(s => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'pairing-chip';
+            chip.append(
+                Object.assign(document.createElement('span'), {
+                    className: 'pairing-chip-icon', textContent: s.icon || '📦',
+                }),
+                Object.assign(document.createElement('span'), {
+                    textContent: s.name,
+                }),
+                Object.assign(document.createElement('span'), {
+                    className: 'pairing-chip-price', textContent: s.price_display,
+                }),
+            );
+            chip.addEventListener('click', () => addToCart(s.id));
+            pairingList.appendChild(chip);
+        });
+        pairingStrip.hidden = false;
+    } catch (err) {
+        /* a missing suggestion is not worth interrupting a sale over */
+    }
 }
 
 clearCartBtn.addEventListener('click', () => {

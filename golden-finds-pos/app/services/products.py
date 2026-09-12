@@ -3,6 +3,7 @@ Product catalogue.
 """
 
 from ..db import audit, query_all, query_one
+from .icons import icon_for
 
 CATEGORIES = (
     "Groceries & Food Items",
@@ -211,6 +212,7 @@ def to_json(product, offer=None):
         "found": True,
         "id": product["id"],
         "name": product["name"],
+        "icon": icon_for(product["name"], product["category"]),
         "barcode": product["barcode"],
         "unit_type": product["unit_type"],
         "retail_price_cents": product["retail_price_cents"],

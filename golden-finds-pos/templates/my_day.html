@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}My day - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">My day</h1>
+        <p class="page-subtitle">
+            {{ current_user['name'] }} &middot; {{ day }}{{ ' (today)' if is_today }}
+        </p>
+    </div>
+</div>
+
+{# No costs and no margins here on purpose. This page is a handover
+   sheet: what was sold, and what should be in the drawer. #}
+<div class="stat-row">
+    <div class="stat-card highlight">
+        <p class="stat-label">Cash to hand over</p>
+        <p class="stat-value">{{ summary.cash_cents | money }}</p>
+        <p class="stat-detail">count the drawer against this</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Sales rung up</p>
+        <p class="stat-value">{{ summary.sale_count }}</p>
+        <p class="stat-detail">{{ summary.units_sold }} items</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">M-Pesa</p>
+        <p class="stat-value">{{ summary.mpesa_cents | money }}</p>
+        <p class="stat-detail">not in the drawer</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">On credit</p>
+        <p class="stat-value">{{ summary.credit_cents | money }}</p>
+        <p class="stat-detail">owed by customers</p>
+    </div>
+</div>
+
+{% if expiring %}
+<section class="dash-panel">
+    <h2>Sell these first</h2>
+    <p class="field-hint">
+        Closest to expiry. Offer them to customers where you can &mdash; if
+        you think one should go on offer, tell Mum and she can set the price.
+    </p>
+    <ul class="alert-list">
+        {% for a in expiring[:10] %}
+        <li class="alert-row">
+            <span class="alert-name">{{ a.product_name }}</span>
+            <span class="alert-badge {{ 'badge-empty' if a.tier in ('urgent', 'expired') else 'badge-low' }}">
+                {% if a.days_left < 0 %}expired
+                {% elif a.days_left == 0 %}expires today
+                {% else %}{{ a.days_left }} day{{ '' if a.days_left == 1 else 's' }} left{% endif %}
+                {%- if a.has_offer %} &middot; on offer{% endif %}
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+<section class="dash-panel">
+    <h2>What I sold</h2>
+    {% if sales %}
+    <div class="table-scroll">
+    <table class="data-table">
+        <thead>
+            <tr><th>Receipt</th><th>Time</th><th>Payment</th>
+                <th class="num">Items</th><th class="num">Total</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for s in sales %}
+            <tr class="{{ 'row-voided' if s['status'] == 'voided' }}">
+                <td class="mono">{{ s['receipt_number'] }}</td>
+                <td>{{ s['created_at'][11:16] }}</td>
+                <td>
+                    {{ s['payment_method'] }}
+                    {% if s['customer_name'] %}
+                    <br><span class="cell-sub">{{ s['customer_name'] }}</span>
+                    {% endif %}
+                </td>
+                <td class="num">{{ s['item_count'] or 0 }}</td>
+                <td class="num">{{ s['total_cents'] | money_plain }}</td>
+                <td class="row-actions">
+                    <a href="{{ url_for('sell.receipt', sale_id=s['id']) }}">Receipt</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">Nothing sold yet today.</p>
+    {% endif %}
+</section>
+{% endblock %}

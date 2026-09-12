@@ -226,6 +226,21 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log (created_at);
 
+-- ------------------------------------------------------- PINNED PAIRINGS --
+-- Pairings the owner has decided on herself, kept regardless of what the
+-- sales data says. Discovered pairings are counted from sale_items and
+-- are not stored. product_a is always the lower id, so a pair can only
+-- ever exist once.
+CREATE TABLE IF NOT EXISTS pinned_pairings (
+    product_a  INTEGER NOT NULL REFERENCES products (id),
+    product_b  INTEGER NOT NULL REFERENCES products (id),
+    note       TEXT,
+    created_by INTEGER REFERENCES users (id),
+    created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (product_a, product_b),
+    CHECK (product_a < product_b)
+);
+
 -- -------------------------------------------------------------- SETTINGS --
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,

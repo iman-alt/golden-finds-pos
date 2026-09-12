@@ -101,6 +101,61 @@ def offer_list():
     )
 
 
+@bp.get("/pairings")
+@admin_required
+def pairing_list():
+    """
+    What sells together. A merchandising aid for the owner - which things
+    to stand next to each other, and which to bundle.
+    """
+    from ..services import pairings, products
+
+    days = request.args.get("days", type=int) or 90
+    return render_template(
+        "admin/pairings.html",
+        days=days,
+        discovered=pairings.discover(days=days, limit=25),
+        pinned=pairings.list_pinned(),
+        products=products.list_products(limit=500),
+    )
+
+
+@bp.post("/pairings")
+@admin_required
+def pairing_pin():
+    from ..services import pairings
+
+    try:
+        with transaction() as conn:
+            pairings.pin(
+                conn,
+                request.form.get("product_a"),
+                request.form.get("product_b"),
+                created_by=current_user()["id"],
+                note=request.form.get("note", "").strip() or None,
+            )
+    except (ValueError, TypeError) as err:
+        flash(str(err) or "Choose two different products.", "error")
+        return redirect(url_for("admin.pairing_list"))
+
+    flash("Pairing saved.", "success")
+    return redirect(url_for("admin.pairing_list"))
+
+
+@bp.post("/pairings/remove")
+@admin_required
+def pairing_unpin():
+    from ..services import pairings
+
+    with transaction() as conn:
+        pairings.unpin(conn, request.form.get("product_a"),
+                       request.form.get("product_b"),
+                       removed_by=current_user()["id"])
+
+    flash("Pairing removed.", "success")
+    return redirect(url_for("admin.pairing_list"))
+
+
 @bp.get("/audit")
 @admin_required
 def audit_log():

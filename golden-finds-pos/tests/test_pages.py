@@ -69,6 +69,7 @@ OWNER_PAGES = [
     "/", "/sell", "/stock-in", "/products", "/add-product", "/sales",
     "/customers", "/reports/", "/reports/products", "/reports/credit",
     "/reports/daily.csv", "/admin/staff", "/admin/offers", "/admin/audit",
+    "/admin/pairings",
     "/change-pin",
 ]
 
@@ -94,13 +95,98 @@ def test_detail_pages_render(client, shop):
         assert client.get(path).status_code == 200, path
 
 
-CASHIER_PAGES = ["/", "/sell", "/stock-in", "/products", "/sales", "/customers"]
+CASHIER_PAGES = ["/", "/sell", "/products", "/sales", "/customers", "/my-day"]
 
 
 @pytest.mark.parametrize("path", CASHIER_PAGES)
 def test_cashier_pages_render(client, shop, path):
     client.post("/login", data={"name": "Amina", "pin": "573820"})
     assert client.get(path).status_code == 200
+
+
+# A shopkeeper sells. They do not change data - not stock, not prices, not
+# products, and not refunds. Each of these is a way to cover a shortfall.
+CASHIER_FORBIDDEN = [
+    "/stock-in",
+    "/add-product",
+    "/reports/",
+    "/reports/products",
+    "/reports/credit",
+    "/admin/staff",
+    "/admin/offers",
+    "/admin/audit",
+    "/admin/pairings",
+]
+
+
+@pytest.mark.parametrize("path", CASHIER_FORBIDDEN)
+def test_a_shopkeeper_cannot_reach_data_pages(client, shop, path):
+    client.post("/login", data={"name": "Amina", "pin": "573820"})
+    assert client.get(path).status_code in (302, 403), path
+
+
+def test_a_shopkeeper_cannot_edit_or_adjust_a_product(client, shop):
+    client.post("/login", data={"name": "Amina", "pin": "573820"})
+    product_id = shop["product"]["id"]
+
+    for path in (f"/products/{product_id}/edit", f"/products/{product_id}/adjust"):
+        assert client.get(path).status_code in (302, 403), path
+
+
+def test_a_shopkeeper_cannot_receive_stock(client, shop):
+    client.post("/login", data={"name": "Amina", "pin": "573820"})
+    response = client.post("/api/stock-in", json={
+        "product_id": shop["product"]["id"], "quantity": 500, "cost_price": "1",
+    })
+    assert response.status_code == 403
+
+    with client.application.app_context():
+        from app.services import products
+        assert products.get(shop["product"]["id"])["stock_quantity"] != 500
+
+
+def test_a_shopkeeper_cannot_refund_or_void(client, shop):
+    client.post("/login", data={"name": "Amina", "pin": "573820"})
+    sale_id = shop["cash_sale"]
+
+    assert client.get(f"/sales/{sale_id}/return").status_code in (302, 403)
+    assert client.post(f"/sales/{sale_id}/void",
+                       data={"reason": "x"}).status_code in (302, 403)
+
+    with client.application.app_context():
+        from app.services import sales
+        assert sales.get_sale(sale_id)["status"] == "completed"
+
+
+def test_a_shopkeeper_can_still_sell(client, shop):
+    """The lockdown must not get in the way of the actual job."""
+    client.post("/login", data={"name": "Amina", "pin": "573820"})
+    response = client.post("/api/checkout", json={
+        "items": [{"product_id": shop["product"]["id"], "quantity": 1}],
+        "payment_method": "cash",
+    })
+    assert response.status_code == 200
+
+
+def test_the_till_warns_both_roles_about_expiring_stock(client, shop):
+    """
+    The person handing goods over is the one who can push them, so the
+    warning is not owner-only - but the offer button still is.
+    """
+    for name, pin in (("Amina", "573820"), ("Owner", "482913")):
+        client.post("/login", data={"name": name, "pin": pin})
+        body = client.get("/sell").get_data(as_text=True)
+        assert "selling soon" in body, name
+        client.post("/logout")
+
+
+def test_my_day_shows_takings_but_not_margins(client, shop):
+    client.post("/login", data={"name": "Amina", "pin": "573820"})
+    body = client.get("/my-day").get_data(as_text=True)
+
+    assert "Cash to hand over" in body
+    assert "Profit" not in body
+    assert "cost of goods" not in body
 
 
 def test_the_cashier_dashboard_hides_the_takings(client, shop):

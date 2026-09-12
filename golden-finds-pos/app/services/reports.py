@@ -114,6 +114,54 @@ def sales_by_cashier(day=None):
     )
 
 
+def cashier_day(user_id, day=None):
+    """
+    One person's own day at the till.
+
+    This is what a shopkeeper hands over on: how many sales they rang up
+    and, separately, how much of it should physically be in the drawer.
+    It deliberately shows no cost or margin - that is the owner's
+    business, not the person selling.
+    """
+    day = day or date.today()
+
+    totals = query_one(
+        f"""
+        SELECT COUNT(*)                        AS sale_count,
+               COALESCE(SUM(s.total_cents), 0) AS revenue_cents,
+               COALESCE(SUM(CASE WHEN s.payment_method = 'cash'
+                                 THEN s.total_cents ELSE 0 END), 0) AS cash_cents,
+               COALESCE(SUM(CASE WHEN s.payment_method = 'mpesa'
+                                 THEN s.total_cents ELSE 0 END), 0) AS mpesa_cents,
+               COALESCE(SUM(CASE WHEN s.payment_method = 'credit'
+                                 THEN s.total_cents ELSE 0 END), 0) AS credit_cents
+        FROM sales s
+        WHERE s.cashier_id = ? AND date(s.created_at) = date(?) AND {_LIVE}
+        """,
+        (user_id, day),
+    )
+
+    units = query_one(
+        f"""
+        SELECT COALESCE(SUM(si.quantity - si.quantity_returned), 0) AS units
+        FROM sale_items si
+        JOIN sales s ON s.id = si.sale_id
+        WHERE s.cashier_id = ? AND date(s.created_at) = date(?) AND {_LIVE}
+        """,
+        (user_id, day),
+    )
+
+    return {
+        "date": str(day),
+        "sale_count": totals["sale_count"],
+        "units_sold": units["units"],
+        "revenue_cents": totals["revenue_cents"],
+        "cash_cents": totals["cash_cents"],
+        "mpesa_cents": totals["mpesa_cents"],
+        "credit_cents": totals["credit_cents"],
+    }
+
+
 def top_products(*, date_from=None, date_to=None, limit=10):
     date_to = date_to or date.today()
     date_from = date_from or (date.fromisoformat(str(date_to)) - timedelta(days=29))

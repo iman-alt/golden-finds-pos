@@ -3,6 +3,41 @@
 {% block main_class %}wide{% endblock %}
 
 {% block content %}
+
+{% if expiring %}
+{# Everyone at the till sees this - the person handing goods over is the
+   one who can actually push them. Only the owner gets to set a price. #}
+<details class="expiry-strip" {{ 'open' if expiring | selectattr('tier', 'equalto', 'urgent') | list }}>
+    <summary>
+        <span class="expiry-strip-count">{{ expiring | length }}</span>
+        {{ 'item needs' if expiring | length == 1 else 'items need' }}
+        selling soon
+        <span class="expiry-strip-hint">
+            {%- if is_admin %} &mdash; set an offer from the dashboard
+            {%- else %} &mdash; push these today, and tell Mum if they should go on offer
+            {%- endif -%}
+        </span>
+    </summary>
+
+    <div class="expiry-strip-items">
+        {% for a in expiring %}
+        <div class="expiry-pill tier-{{ a.tier }}">
+            <strong>{{ a.product_name }}</strong>
+            <span>
+                {{ a.quantity_remaining }} left &middot;
+                {% if a.days_left < 0 %}expired
+                {% elif a.days_left == 0 %}today
+                {% else %}{{ a.days_left }}d{% endif %}
+            </span>
+            {% if a.has_offer %}
+            <span class="expiry-pill-offer">on offer {{ a.offer_price_cents | money }}</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</details>
+{% endif %}
+
 <div class="sell-layout">
 
     <div class="scan-panel">
@@ -17,6 +52,17 @@
             <kbd>F2</kbd> jumps to payment &middot;
             <kbd>Esc</kbd> clears the box
         </div>
+    </div>
+
+    {# What customers usually take together, from this shop's own
+       receipts. A prompt to offer, never an instruction - and the person
+       serving can hide it for good if they would rather not see it. #}
+    <div id="pairing-strip" class="pairing-strip" hidden>
+        <div class="pairing-head">
+            <span class="pairing-title">Often bought with this</span>
+            <button type="button" id="pairing-hide" class="btn-link">Hide these</button>
+        </div>
+        <div id="pairing-list" class="pairing-list"></div>
     </div>
 
     <div class="cart-panel">

@@ -13,6 +13,7 @@ from ..db import transaction
 from ..money import MoneyError, format_money, parse_money
 from ..security import admin_required, current_user, login_required
 from ..services import customers, offers, products, sales, stock
+from ..services.icons import icon_for
 from ..services.products import ProductError
 from ..services.sales import SaleError
 from ..services.stock import StockError
@@ -43,6 +44,7 @@ def search():
         {
             "id": p["id"],
             "name": p["name"],
+            "icon": icon_for(p["name"], p["category"]),
             "barcode": p["barcode"],
             "retail_price_cents": p["retail_price_cents"],
             "retail_price_display": format_money(p["retail_price_cents"]),
@@ -74,6 +76,7 @@ def price_cart():
             {
                 "product_id": line["product_id"],
                 "name": line["name"],
+                "icon": icon_for(line["name"], line["product"]["category"]),
                 "quantity": line["quantity"],
                 "unit_price_cents": line["unit_price_cents"],
                 "unit_price_display": format_money(line["unit_price_cents"]),
@@ -131,7 +134,7 @@ def checkout():
 
 
 @bp.post("/stock-in")
-@login_required
+@admin_required
 def stock_in():
     data = request.get_json(silent=True) or {}
 
@@ -233,6 +236,29 @@ def write_off(batch_id):
         "success": True,
         "message": f"Wrote off {quantity} expired units.",
     })
+
+
+@bp.get("/pairings/<int:product_id>")
+@login_required
+def pairing_suggestions(product_id):
+    """
+    What usually goes with this, for the prompt on the till. Available to
+    whoever is serving - suggesting a second item is selling, not
+    editing.
+    """
+    from ..services import pairings
+
+    return jsonify([
+        {
+            "id": row["id"],
+            "name": row["name"],
+            "icon": icon_for(row["name"]),
+            "price_display": format_money(row["retail_price_cents"]),
+            "stock_quantity": row["stock_quantity"],
+            "pinned": bool(row["pinned"]),
+        }
+        for row in pairings.suggestions_for(product_id)
+    ])
 
 
 @bp.get("/customers/search")

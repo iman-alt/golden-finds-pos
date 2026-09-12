@@ -32,7 +32,7 @@ def product_list():
 
 
 @bp.route("/add-product", methods=["GET", "POST"])
-@login_required
+@admin_required
 def add_product():
     """
     Reached automatically when an unknown barcode is scanned, with the
@@ -138,7 +138,7 @@ def edit_product(product_id):
 
 
 @bp.get("/stock-in")
-@login_required
+@admin_required
 def stock_in_screen():
     return render_template("stock_in.html", barcode=request.args.get("barcode", ""))
 
