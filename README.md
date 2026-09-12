@@ -55,11 +55,24 @@ recording full retail.
 2. Wholesale, once quantity reaches that product's threshold.
 3. Retail.
 
+### What sells together
+
+Pairings are counted from the shop's own receipts — no tagging, no setup.
+Alongside how often two things share a receipt, it shows follow-through:
+how often buying the first actually led to the second, since two
+separately popular items will share receipts by chance. The owner can pin
+pairs by hand. At the till it is one strip of chips, and whoever is
+serving can hide it for good.
+
 ### Expiry and offers
 
 Products marked as expiring are received in batches and always sold
 soonest-expiry-first. The dashboard shows what is approaching its date,
 tiered by urgency, with the value still sitting on the shelf.
+
+Expiring stock is shown at the till to **both** roles, because the person
+handing goods over is the one who can actually push them. Only the owner
+gets the button that sets a price.
 
 The system never discounts anything by itself. It says which stock is
 becoming a problem and suggests prices; a person picks one and approves
@@ -68,9 +81,19 @@ date, after which they stop applying on their own.
 
 ### Two roles
 
-**Cashier** — the till, stock in, their own sales.
+**Shopkeeper** — sells. That is the whole list: the till, their own
+sales, and a handover sheet at the end of the day showing what they rang
+up and what should be in the drawer. They cannot receive stock, add or
+edit a product, adjust a stock level, refund, void, or see any report.
+Each of those is a way to cover a shortfall, so none of them belong to
+the person holding the cash.
+
 **Owner** — everything, plus takings, margins, offer prices, voids, stock
 adjustments, staff, and the activity log.
+
+The till adapts rather than dead-ending: a shopkeeper who scans an unknown
+barcode is told to set it aside and ask the owner, instead of being sent
+to a form they are not allowed to submit.
 
 Sign-in is a name and a PIN, because a cashier at a counter is not going
 to type a password between customers. PINs are hashed with scrypt and
@@ -100,9 +123,10 @@ flask --app run create-admin    # add an owner account
 .venv/Scripts/python -m pytest
 ```
 
-125 tests, covering pricing and offers, FEFO batch consumption,
+165 tests, covering pricing and offers, FEFO batch consumption,
 authentication and access control, the sale lifecycle, backup and
-restore, and that every page renders for both roles.
+restore, product pairings and icons, role boundaries, and that every page
+renders for both roles.
 
 ## Layout
 
@@ -114,13 +138,23 @@ app/
   backup.py         snapshot, verify, restore
   schema.sql        every table, money as INTEGER cents
   services/         business logic, no HTTP
+    sales.py        pricing, checkout, voids, returns
+    stock.py        FEFO, the ledger, integrity checks
+    offers.py       expiry tiers, owner-approved prices
+    pairings.py     what sells together
+    icons.py        derived product icons
   views/            routes, no business logic
 templates/  static/  tests/  docs/
 ```
 
-## Where it can go
+## Offline and online
 
-The data model does not assume one machine. If the shop later wants the
-system reachable from outside, the same code runs against a hosted
-database with the local copy kept as the fallback. That is a later
-decision, and nothing here forecloses it.
+The shop's computer holds the real data; everything else is a window onto
+it. The till works with the router unplugged. Phones on the shop wifi
+already reach it. To check takings from home, you expose that same
+machine through a tunnel rather than running a second copy — because two
+copies means sync, and sync means deciding who wins when the price
+changed at home while the shop sold three bags offline.
+
+[docs/HYBRID.md](golden-finds-pos/docs/HYBRID.md) covers the reasoning
+and the setup.
