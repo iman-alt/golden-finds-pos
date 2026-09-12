@@ -2,6 +2,9 @@
 {% block title %}Sign in - {{ shop_name }}{% endblock %}
 {% block main_class %}centered{% endblock %}
 
+{# Messages go inside the card instead, so the picture panel always fills the screen. #}
+{% block flashes %}{% endblock %}
+
 {% block content %}
 {% set tints = [
     'linear-gradient(135deg,#f6c95c,#e0725a)',
@@ -43,6 +46,12 @@
         <div class="auth-card {{ 'shake' if error }}" id="auth-card">
             <h2 id="step-title">Who's at the counter?</h2>
             <p class="auth-subtitle" id="step-sub">Tap your name to begin.</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                <div class="flash flash-{{ category }}" style="margin-bottom:16px">{{ message }}</div>
+                {% endfor %}
+            {% endwith %}
 
             {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
 

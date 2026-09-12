@@ -81,6 +81,9 @@
 {% endif %}
 
 <main class="page-content {% block main_class %}{% endblock %}">
+    {# Pages with their own layout (the login screen) override this to show
+       messages somewhere that doesn't push the page down. #}
+    {% block flashes %}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="flash-stack">
@@ -90,6 +93,7 @@
         </div>
         {% endif %}
     {% endwith %}
+    {% endblock %}
 
     {% block content %}{% endblock %}
 </main>
