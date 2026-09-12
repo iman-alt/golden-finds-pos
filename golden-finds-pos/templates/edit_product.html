@@ -8,11 +8,14 @@
         {{ product['barcode'] }} &middot; {{ product['stock_quantity'] }} in stock
     </p>
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <label for="name">Product name</label>
         <input type="text" id="name" name="name" value="{{ product['name'] }}" required>
+
+        <label>Photo</label>
+        {% include "_photo_picker.html" %}
 
         <label for="category">Category</label>
         <select id="category" name="category">

@@ -71,6 +71,11 @@ def _register_hooks(app):
 
     # Templates render money by calling this, so no template ever has to
     # know that the underlying value is cents.
+    from .services.icons import icon_for
+    from .services.images import image_url
+
+    app.jinja_env.globals["product_image"] = image_url
+    app.jinja_env.globals["product_icon"] = icon_for
     app.jinja_env.filters["money"] = format_money
     app.jinja_env.filters["money_plain"] = lambda c: format_money(c, symbol=False)
 
@@ -93,6 +98,14 @@ def _register_errors(app):
         if request.path.startswith("/api/"):
             return jsonify({"success": False, "message": "Not found."}), 404
         return render_template("errors/404.html"), 404
+
+    @app.errorhandler(413)
+    def _too_large(err):
+        message = "That photo is too big. Try one under 12 MB."
+        if request.path.startswith("/api/"):
+            return jsonify({"success": False, "message": message}), 413
+        flash(message, "error")
+        return redirect(request.referrer or url_for("inventory.product_list"))
 
     @app.errorhandler(500)
     def _server_error(err):

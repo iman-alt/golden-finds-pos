@@ -10,6 +10,8 @@ from ..db import transaction
 from ..money import MoneyError, parse_money
 from ..security import admin_required, current_user, login_required
 from ..services import products, stock
+from ..services import images
+from ..services.images import ImageError
 from ..services.products import CATEGORIES, UNIT_TYPES, ProductError
 
 bp = Blueprint("inventory", __name__)
@@ -50,7 +52,7 @@ def add_product():
     form = request.form
     try:
         product_id, warning = _save_new_product(form)
-    except (ProductError, MoneyError) as err:
+    except (ProductError, MoneyError, ImageError) as err:
         return render_template(
             "add_product.html",
             barcode=form.get("barcode", ""),
@@ -73,9 +75,22 @@ def add_product():
 
 
 def _save_new_product(form):
+    # The photo is checked and stored first, so a bad file is reported
+    # before anything is saved - and removed again if the product itself
+    # then fails to save, so no orphan files pile up.
+    photo = images.save_product_image(request.files.get("photo"))
+    try:
+        return _create_product(form, photo)
+    except Exception:
+        images.delete_product_image(photo)
+        raise
+
+
+def _create_product(form, photo):
     with transaction() as conn:
         return products.create(
             conn,
+            image_path=photo,
             barcode=form.get("barcode", ""),
             name=form.get("name", ""),
             category=form.get("category", ""),
@@ -103,16 +118,22 @@ def edit_product(product_id):
     if request.method == "GET":
         return render_template(
             "edit_product.html", product=product,
+            current_image=images.image_url(product["image_path"]),
             categories=CATEGORIES, unit_types=UNIT_TYPES,
             movements=stock.get_movements(product_id, limit=50),
         )
 
     form = request.form
+    new_photo = None
+    remove_photo = form.get("remove_photo") == "on"
     try:
+        new_photo = images.save_product_image(request.files.get("photo"))
         with transaction() as conn:
             warning = products.update(
                 conn, product_id,
                 updated_by=current_user()["id"],
+                # "" clears the photo; None leaves it as it was.
+                image_path=new_photo or ("" if remove_photo else None),
                 name=form.get("name"),
                 category=form.get("category"),
                 unit_type=form.get("unit_type"),
@@ -127,9 +148,14 @@ def edit_product(product_id):
                 track_expiry=1 if form.get("track_expiry") == "on" else 0,
                 active=1 if form.get("active") == "on" else 0,
             )
-    except (ProductError, MoneyError) as err:
+    except (ProductError, MoneyError, ImageError) as err:
+        images.delete_product_image(new_photo)
         flash(str(err), "error")
         return redirect(url_for("inventory.edit_product", product_id=product_id))
+
+    # The old file goes only once the change is safely recorded.
+    if (new_photo or remove_photo) and product["image_path"]:
+        images.delete_product_image(product["image_path"])
 
     if warning:
         flash(warning, "warning")

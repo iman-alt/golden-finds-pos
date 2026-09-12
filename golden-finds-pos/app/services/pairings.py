@@ -100,7 +100,7 @@ def suggestions_for(product_id, limit=3, days=90, min_support=MIN_SUPPORT):
             GROUP BY other.product_id
             HAVING together >= ?
         )
-        SELECT p.id, p.name, p.retail_price_cents, p.stock_quantity,
+        SELECT p.id, p.name, p.retail_price_cents, p.stock_quantity, p.image_path,
                COALESCE(pt.together, 0) AS together,
                EXISTS (SELECT 1 FROM pinned_pairings pp
                        WHERE (pp.product_a = ? AND pp.product_b = p.id)

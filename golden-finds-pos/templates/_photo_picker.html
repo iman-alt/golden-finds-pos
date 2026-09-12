@@ -1,0 +1,61 @@
+{# Product photo chooser, shared by the add and edit product pages.
+   Pass `current_image` (a URL) when the product already has a photo. #}
+<label class="photo-picker" for="photo" id="photo-picker">
+    <span class="photo-preview" id="photo-preview">
+        {% if current_image %}<img src="{{ current_image }}" alt="Current photo">{% else %}📷{% endif %}
+    </span>
+    <span>
+        <strong id="photo-title">{{ 'Change the photo' if current_image else 'Add a photo of the pack' }}</strong>
+        <span class="photo-hint">
+            Take it on your phone, front of the pack, against a plain background.
+            It shows at the till so whoever is serving knows exactly what to grab.
+        </span>
+        <span class="btn-secondary">📷 Take or choose a photo</span>
+    </span>
+    <input type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/webp">
+</label>
+
+{% if current_image %}
+<label class="checkbox-label">
+    <input type="checkbox" name="remove_photo" id="remove-photo">
+    Remove the photo and use the icon instead
+</label>
+{% endif %}
+
+<script>
+(() => {
+    const picker = document.getElementById('photo-picker');
+    const input = document.getElementById('photo');
+    const preview = document.getElementById('photo-preview');
+    const title = document.getElementById('photo-title');
+
+    function show(file) {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            title.textContent = "That isn't a photo. Try again.";
+            return;
+        }
+        const img = document.createElement('img');
+        img.alt = 'New photo';
+        img.src = URL.createObjectURL(file);
+        preview.replaceChildren(img);
+        title.textContent = 'Looks good. It saves with the product.';
+    }
+
+    input.addEventListener('change', () => show(input.files[0]));
+
+    // Dragging a photo in from the computer works too.
+    ['dragenter', 'dragover'].forEach(type => picker.addEventListener(type, (e) => {
+        e.preventDefault();
+        picker.classList.add('dragging');
+    }));
+    ['dragleave', 'drop'].forEach(type => picker.addEventListener(type, () =>
+        picker.classList.remove('dragging')));
+    picker.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!e.dataTransfer.files.length) return;
+        input.files = e.dataTransfer.files;
+        show(input.files[0]);
+    });
+})();
+</script>

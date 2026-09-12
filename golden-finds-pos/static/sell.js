@@ -63,6 +63,32 @@ function el(tag, className, text) {
     return node;
 }
 
+/*
+ * A product picture: Mum's photo of the pack when there is one, otherwise
+ * the icon. A photo that fails to load falls back to the icon rather
+ * than showing a broken image.
+ */
+function fillPic(node, imageUrl, icon) {
+    node.replaceChildren();
+    node.classList.toggle('has-photo', Boolean(imageUrl));
+    if (!imageUrl) {
+        node.textContent = icon || '📦';
+        return;
+    }
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.onerror = () => fillPic(node, null, icon);
+    node.appendChild(img);
+}
+
+function pic(className, imageUrl, icon) {
+    const node = el('span', className);
+    fillPic(node, imageUrl, icon);
+    return node;
+}
+
 function showMessage(text, type = 'info') {
     scanMessage.textContent = text;
     scanMessage.className = `scan-message ${type}`;
@@ -141,7 +167,7 @@ async function lookupAndAdd(barcode) {
 
 function spotlight(product) {
     const price = product.offer_price_cents ?? product.retail_price_cents;
-    $('spot-icon').textContent = product.icon || '📦';
+    fillPic($('spot-icon'), product.image_url, product.icon);
     $('spot-name').textContent = product.name;
     $('spot-meta').textContent = product.offer_price_cents
         ? `On offer · ${product.stock_quantity} in stock`
@@ -169,7 +195,7 @@ async function runSearch(query) {
             item.type = 'button';
             item.style.animationDelay = `${index * 30}ms`;
             item.append(
-                el('span', 'search-result-icon', product.icon || '📦'),
+                pic('search-result-icon', product.image_url, product.icon),
                 el('span', '', product.name),
                 el('span', 'search-result-meta',
                    `${product.retail_price_display} · ${product.stock_quantity} left`),
@@ -278,7 +304,7 @@ function render() {
             button('×', 'Remove', () => removeFromCart(line.product_id), 'qty-remove'),
         );
 
-        row.append(el('span', 'line-ico', line.icon || '📦'), body, qty,
+        row.append(pic('line-ico', line.image_url, line.icon), body, qty,
                    el('span', 'line-total', line.line_total_display));
         cartItemsEl.appendChild(row);
     });
@@ -350,7 +376,7 @@ async function refreshPairings() {
         suggestions.forEach(s => {
             const chip = el('button', 'pairing-chip');
             chip.type = 'button';
-            chip.append(el('span', 'pairing-chip-icon', s.icon || '📦'),
+            chip.append(pic('pairing-chip-icon', s.image_url, s.icon),
                         el('span', '', s.name),
                         el('span', 'pairing-chip-price', s.price_display));
             chip.addEventListener('click', () => { lastAddedId = s.id; addToCart(s.id); });

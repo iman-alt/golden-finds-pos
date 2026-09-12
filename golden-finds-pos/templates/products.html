@@ -39,10 +39,15 @@
     {% for p in products %}
         <tr class="{{ 'row-inactive' if not p['active'] }}">
             <td>
+                <div class="product-cell">
+                <span class="thumb">{% if p['image_path'] %}<img src="{{ product_image(p['image_path']) }}" alt="" loading="lazy">{% else %}{{ product_icon(p['name'], p['category']) }}{% endif %}</span>
+                <div>
                 {{ p['name'] }}
                 {% if p['track_expiry'] %}<span class="chip">expiry</span>{% endif %}
                 {% if not p['active'] %}<span class="chip chip-muted">discontinued</span>{% endif %}
                 <br><span class="cell-sub">{{ p['category'] or 'Uncategorised' }}</span>
+                </div>
+                </div>
             </td>
             <td class="mono">{{ p['barcode'] }}</td>
             <td class="num">

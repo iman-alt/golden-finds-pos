@@ -14,6 +14,7 @@ from ..money import MoneyError, format_money, parse_money
 from ..security import admin_required, current_user, login_required
 from ..services import offers, products, sales, stock
 from ..services.icons import icon_for
+from ..services.images import image_url
 from ..services.products import ProductError
 from ..services.sales import SaleError
 from ..services.stock import StockError
@@ -45,6 +46,7 @@ def search():
             "id": p["id"],
             "name": p["name"],
             "icon": icon_for(p["name"], p["category"]),
+            "image_url": image_url(p["image_path"]),
             "barcode": p["barcode"],
             "retail_price_cents": p["retail_price_cents"],
             "retail_price_display": format_money(p["retail_price_cents"]),
@@ -77,6 +79,7 @@ def price_cart():
                 "product_id": line["product_id"],
                 "name": line["name"],
                 "icon": icon_for(line["name"], line["product"]["category"]),
+                "image_url": image_url(line["product"]["image_path"]),
                 "quantity": line["quantity"],
                 "unit_price_cents": line["unit_price_cents"],
                 "unit_price_display": format_money(line["unit_price_cents"]),
@@ -183,7 +186,7 @@ def stock_in_recent():
     rows = query_all(
         """
         SELECT m.id, m.quantity_change, m.created_at,
-               p.name, p.category, b.expiry_date, u.name AS user_name
+               p.name, p.category, p.image_path, b.expiry_date, u.name AS user_name
         FROM stock_movements m
         JOIN products p ON p.id = m.product_id
         LEFT JOIN batches b ON b.id = m.batch_id
@@ -199,6 +202,7 @@ def stock_in_recent():
             "id": row["id"],
             "product_name": row["name"],
             "icon": icon_for(row["name"], row["category"]),
+            "image_url": image_url(row["image_path"]),
             "quantity": row["quantity_change"],
             "expiry_date": row["expiry_date"],
             "user_name": row["user_name"],
@@ -289,6 +293,7 @@ def pairing_suggestions(product_id):
             "id": row["id"],
             "name": row["name"],
             "icon": icon_for(row["name"]),
+            "image_url": image_url(row["image_path"]),
             "price_display": format_money(row["retail_price_cents"]),
             "stock_quantity": row["stock_quantity"],
             "pinned": bool(row["pinned"]),

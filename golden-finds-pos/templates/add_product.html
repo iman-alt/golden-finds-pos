@@ -10,7 +10,7 @@
 
     {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
 
-    <form method="POST" action="{{ url_for('inventory.add_product') }}">
+    <form method="POST" action="{{ url_for('inventory.add_product') }}" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <label for="barcode">Barcode</label>
@@ -19,6 +19,9 @@
         <label for="name">Product name</label>
         <input type="text" id="name" name="name" value="{{ form.get('name', '') }}"
                placeholder="e.g. Omo 1kg" required {{ 'autofocus' if barcode }}>
+
+        <label>Photo <span class="cell-sub">(optional)</span></label>
+        {% include "_photo_picker.html" %}
 
         <label for="category">Category</label>
         <select id="category" name="category">

@@ -29,6 +29,20 @@ function el(tag, className, text) {
     return node;
 }
 
+function fillPic(node, imageUrl, icon) {
+    node.replaceChildren();
+    node.classList.toggle('has-photo', Boolean(imageUrl));
+    if (!imageUrl) {
+        node.textContent = icon || '📦';
+        return;
+    }
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.alt = '';
+    img.onerror = () => fillPic(node, null, icon);
+    node.appendChild(img);
+}
+
 function money(cents) {
     return 'KSh ' + (cents / 100).toLocaleString('en-KE', { maximumFractionDigits: 2 });
 }
@@ -67,7 +81,7 @@ async function handleScan(barcode) {
 }
 
 function showProductForm(product) {
-    $('product-icon').textContent = product.icon || '📦';
+    fillPic($('product-icon'), product.image_url, product.icon);
     $('product-name').textContent = product.name;
 
     const meta = $('product-meta');
@@ -219,7 +233,9 @@ async function loadLog() {
                    [row.time, row.user_name, row.expiry_date ? `expires ${row.expiry_date}` : null]
                        .filter(Boolean).join(' · ')),
             );
-            item.append(el('span', 'line-ico', row.icon || '📦'), body,
+            const ico = el('span', 'line-ico');
+            fillPic(ico, row.image_url, row.icon);
+            item.append(ico, body,
                         el('span', 'received-qty', `+${row.quantity}`));
             logEl.appendChild(item);
         });

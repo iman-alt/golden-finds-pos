@@ -10,6 +10,7 @@ from ..backup import last_backup_age
 from ..security import current_user, login_required
 from ..services import offers, reports, stock
 from ..services.icons import icon_for
+from ..services.images import image_url
 
 bp = Blueprint("dashboard", __name__)
 
@@ -25,7 +26,8 @@ def index():
         alert["icon"] = icon_for(alert["product_name"])
 
     low_stock = [
-        dict(row, icon=icon_for(row["name"], row["category"]))
+        dict(row, icon=icon_for(row["name"], row["category"]),
+             image_url=image_url(row["image_path"]))
         for row in stock.get_low_stock(limit=12)
     ]
 

@@ -40,7 +40,8 @@ def app():
     os.close(handle)
 
     application = create_app(Config, DATABASE=path, TESTING=True,
-                             SECRET_KEY="test-key", MAX_PIN_ATTEMPTS=5)
+                             SECRET_KEY="test-key", MAX_PIN_ATTEMPTS=5,
+                             UPLOAD_DIR=tempfile.mkdtemp(prefix="gf-photos-"))
     yield application
 
     for suffix in ("", "-wal", "-shm"):

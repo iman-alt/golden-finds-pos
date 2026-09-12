@@ -246,7 +246,7 @@
         <ul class="alert-list">
             {% for p in low_stock %}
             <li class="alert-row">
-                <span class="alert-name"><span class="row-ico">{{ p['icon'] }}</span>{{ p['name'] }}</span>
+                <span class="alert-name"><span class="row-ico">{% if p['image_url'] %}<img src="{{ p['image_url'] }}" alt="" loading="lazy">{% else %}{{ p['icon'] }}{% endif %}</span>{{ p['name'] }}</span>
                 <span class="alert-badge {{ 'badge-empty' if p['stock_quantity'] == 0 else 'badge-low' }}">
                     {{ 'Sold out' if p['stock_quantity'] == 0 else p['stock_quantity'] ~ ' left' }}
                 </span>

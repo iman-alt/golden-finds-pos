@@ -62,6 +62,11 @@ class Config:
 
     SHOP_NAME = os.environ.get("SHOP_NAME", "Golden Finds")
 
+    # Product photos, taken on a phone. Each is re-encoded and shrunk on
+    # upload, so the size limit only guards against something absurd.
+    UPLOAD_DIR = os.environ.get("UPLOAD_DIR", str(BASE_DIR / "static" / "product_images"))
+    MAX_CONTENT_LENGTH = 12 * 1024 * 1024
+
     # Where `flask backup` writes to. Point this at a OneDrive or Google
     # Drive folder and the sync client carries the copy off the machine -
     # which is the whole point of taking it.

@@ -4,6 +4,7 @@ Product catalogue.
 
 from ..db import audit, query_all, query_one
 from .icons import icon_for
+from .images import image_url
 
 CATEGORIES = (
     "Groceries & Food Items",
@@ -213,6 +214,7 @@ def to_json(product, offer=None):
         "id": product["id"],
         "name": product["name"],
         "icon": icon_for(product["name"], product["category"]),
+        "image_url": image_url(product["image_path"]),
         "barcode": product["barcode"],
         "unit_type": product["unit_type"],
         "retail_price_cents": product["retail_price_cents"],
