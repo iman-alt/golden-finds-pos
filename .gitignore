@@ -14,3 +14,8 @@ htmlcov/
 golden-finds-pos/static/product_images/*
 !golden-finds-pos/static/product_images/.gitkeep
 backups/
+
+# Built by the Windows installer
+golden-finds-pos/windows/golden-finds.ico
+wheels/
+golden-finds-pos/wheels/

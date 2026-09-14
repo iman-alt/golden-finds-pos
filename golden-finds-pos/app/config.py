@@ -17,6 +17,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 INSTANCE_DIR = BASE_DIR / "instance"
 
 
+def load_local_env(path):
+    """
+    Reads KEY=VALUE settings the Windows installer writes for this one
+    computer, such as where backups go. They live in the instance folder so
+    an update never overwrites them. Real environment variables still win.
+    """
+    path = Path(path)
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+load_local_env(INSTANCE_DIR / "local.env")
+
+
 def _secret_key():
     """
     Reads the signing key, creating it on first run.
