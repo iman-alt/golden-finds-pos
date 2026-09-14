@@ -143,8 +143,7 @@
 <script>
 (() => {
     const code = document.getElementById('code');
-    let typedOwn = {{ 'true' if form.get('code') else 'false' }};
-    if (code) code.addEventListener('input', () => { typedOwn = true; code.value = code.value.replace(/\D/g, ''); });
+    if (code) code.addEventListener('input', () => { code.value = code.value.replace(/\D/g, ''); });
 
     document.querySelectorAll('.group-option').forEach(option => {
         option.addEventListener('click', () => {
@@ -152,8 +151,12 @@
             option.classList.add('selected');
             const radio = option.querySelector('input');
             radio.checked = true;
-            // Suggest the group's next free code, unless a code was typed by hand.
-            if (code && !typedOwn && radio.dataset.next) code.value = radio.dataset.next;
+            if (!code || !radio.dataset.next) return;
+            // Replace the code whenever it is empty or belongs to a different
+            // group - otherwise a hair pin could keep a Dairy code like 111.
+            const value = code.value.trim();
+            const otherGroup = value.length === 3 && value[0] !== radio.value;
+            if (!value || otherGroup) code.value = radio.dataset.next;
         });
     });
 

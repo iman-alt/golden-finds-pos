@@ -166,11 +166,32 @@ def update(conn, product_id, *, updated_by, **fields):
         raise ProductError("Product not found.")
 
     allowed = {
-        "name", "category", "unit_type", "retail_price_cents",
+        "barcode", "name", "category", "unit_type", "retail_price_cents",
         "wholesale_price_cents", "wholesale_min_qty", "cost_price_cents",
         "low_stock_threshold", "track_expiry", "image_path", "active",
     }
     changes = {k: v for k, v in fields.items() if k in allowed and v is not None}
+
+    # A barcode or quick-item code can be corrected, as long as the new one
+    # isn't blank or already used. Sales and stock history follow the
+    # product, not the code, so nothing is lost.
+    if "barcode" in changes:
+        new_code = (changes["barcode"] or "").strip()
+        if new_code == product["barcode"]:
+            del changes["barcode"]
+        else:
+            if not new_code:
+                raise ProductError("The barcode or code can't be empty.")
+            taken = conn.execute(
+                "SELECT name FROM products WHERE barcode = ? AND id <> ?",
+                (new_code, product_id),
+            ).fetchone()
+            if taken:
+                raise ProductError(f"That code is already used by {taken['name']}.")
+            changes["barcode"] = new_code
+            audit(conn, updated_by, "barcode_changed", "product", product_id,
+                  f"{product['barcode']} -> {new_code}")
+
     if not changes:
         return
 

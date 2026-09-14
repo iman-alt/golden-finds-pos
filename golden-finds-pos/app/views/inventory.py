@@ -134,6 +134,7 @@ def edit_product(product_id):
                 updated_by=current_user()["id"],
                 # "" clears the photo; None leaves it as it was.
                 image_path=new_photo or ("" if remove_photo else None),
+                barcode=form.get("barcode"),
                 name=form.get("name"),
                 category=form.get("category"),
                 unit_type=form.get("unit_type"),

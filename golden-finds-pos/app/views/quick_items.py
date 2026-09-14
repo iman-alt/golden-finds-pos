@@ -48,9 +48,21 @@ def create():
     try:
         code = quick_items.validate_code(form.get("code"))
         try:
-            group = GROUPS_BY_DIGIT[int(form.get("group", 9))]
+            group = GROUPS_BY_DIGIT[int(form.get("group"))]
         except (TypeError, ValueError, KeyError):
-            group = GROUPS_BY_DIGIT[9]
+            raise QuickItemError("Choose which group it belongs to.")
+
+        # The list groups items by the first digit of their code, so a code
+        # from another group would put the item in the wrong place (a hair
+        # pin with 111 would show under Dairy & drinks).
+        coded = quick_items.group_for(code)
+        if len(code) == 3 and coded["digit"] != group["digit"] and code[0] != "8" and code[0] != "0":
+            suggestion = quick_items.next_free_code(group["digit"])
+            raise QuickItemError(
+                f"Code {code} is a {coded['label']} code. "
+                f"{group['label']} codes start with {group['digit']}"
+                + (f" - use {suggestion}." if suggestion else ".")
+            )
 
         price = parse_money(form.get("price"), field="Price")
         cost_raw = (form.get("cost_price") or "").strip()

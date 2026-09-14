@@ -143,3 +143,57 @@ def test_the_print_list_renders(client, owner, make_product):
     _login_owner(client)
     body = client.get("/quick-items/print").get_data(as_text=True)
     assert "222" in body and "Hair pins" in body
+
+
+# ------------------------------------------------- group and code must agree --
+
+def test_a_code_from_another_group_is_refused(app, client, owner):
+    """A hair pin saved as 111 would show under Dairy & drinks."""
+    _login_owner(client)
+    response = client.post("/quick-items/", data=_form(group="2", code="111"))
+    assert response.status_code == 400
+    body = response.get_data(as_text=True)
+    assert "Dairy &amp; drinks code" in body
+    assert "use 211" in body
+    with app.app_context():
+        assert query_one("SELECT COUNT(*) AS n FROM products")["n"] == 0
+
+
+def test_a_group_must_be_chosen(client, owner):
+    _login_owner(client)
+    data = _form()
+    del data["group"]
+    response = client.post("/quick-items/", data=data)
+    assert response.status_code == 400
+    assert "Choose which group" in response.get_data(as_text=True)
+
+
+def test_a_wrong_code_can_be_fixed_on_the_edit_page(app, client, owner, make_product):
+    product = make_product(name="hair pin", barcode="111", retail=5000, wholesale=5000, stock_qty=10)
+    _login_owner(client)
+    response = client.post(f"/products/{product['id']}/edit", data={
+        "barcode": "211", "name": "hair pin", "category": "Personal Care & Cosmetics",
+        "unit_type": "piece", "cost_price": "30", "retail_price": "50", "wholesale_price": "50",
+        "wholesale_min_qty": "6", "low_stock_threshold": "5", "active": "on",
+    })
+    assert response.status_code == 302
+
+    with app.app_context():
+        fixed = query_one("SELECT * FROM products WHERE id = ?", (product["id"],))
+        assert fixed["barcode"] == "211"
+        assert fixed["stock_quantity"] == 10, "stock stays with the product"
+        groups = {g["label"]: [i["name"] for i in g["items"]] for g in quick_items.grouped_items()}
+        assert groups == {"Hair & beauty": ["hair pin"]}
+
+
+def test_changing_to_a_code_already_in_use_is_refused(app, client, owner, make_product):
+    make_product(name="Milk", barcode="111", retail=6000, wholesale=6000)
+    pins = make_product(name="hair pin", barcode="211", retail=5000, wholesale=5000)
+    _login_owner(client)
+    client.post(f"/products/{pins['id']}/edit", data={
+        "barcode": "111", "name": "hair pin", "category": "Personal Care & Cosmetics",
+        "unit_type": "piece", "cost_price": "30", "retail_price": "50", "wholesale_price": "50",
+        "wholesale_min_qty": "6", "low_stock_threshold": "5", "active": "on",
+    })
+    with app.app_context():
+        assert query_one("SELECT barcode FROM products WHERE id = ?", (pins["id"],))["barcode"] == "211"

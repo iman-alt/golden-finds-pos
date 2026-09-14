@@ -11,8 +11,17 @@
     <form method="POST" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <label for="name">Product name</label>
-        <input type="text" id="name" name="name" value="{{ product['name'] }}" required>
+        <div class="form-row">
+            <div>
+                <label for="name">Product name</label>
+                <input type="text" id="name" name="name" value="{{ product['name'] }}" required>
+            </div>
+            <div>
+                <label for="barcode">Barcode or quick code</label>
+                <input type="text" id="barcode" name="barcode" value="{{ product['barcode'] }}" required>
+                <p class="field-hint">Quick codes group by first digit: 1 dairy, 2 hair &amp; beauty, 3 loose foods, 4 household, 5 baby, 6 fashion, 7 sweets, 9 other.</p>
+            </div>
+        </div>
 
         <label>Photo</label>
         {% include "_photo_picker.html" %}
