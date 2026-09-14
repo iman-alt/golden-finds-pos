@@ -533,4 +533,59 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// ---------------------------------------------------------- quick items --
+
+/*
+ * Tiles for items without a barcode. Tapping one goes through the same
+ * lookup as a scan, so prices, stock warnings and the "just added" card
+ * all behave the same.
+ */
+async function loadQuickItems() {
+    try {
+        const res = await fetch('/quick-items/api');
+        if (!res.ok) return;
+        const items = await res.json();
+        if (items.length === 0) return;
+
+        const groups = [...new Set(items.map(i => i.group))];
+        const tabs = $('quick-tabs');
+        const grid = $('quick-grid');
+        let active = groups[0];
+
+        function draw() {
+            tabs.replaceChildren();
+            if (groups.length > 1) {
+                groups.forEach(name => {
+                    const sample = items.find(i => i.group === name);
+                    const tab = el('button', 'quick-tab' + (name === active ? ' selected' : ''),
+                                   `${sample.group_emoji} ${name}`);
+                    tab.type = 'button';
+                    tab.addEventListener('click', () => { active = name; draw(); });
+                    tabs.appendChild(tab);
+                });
+            }
+            grid.replaceChildren();
+            items.filter(i => i.group === active).forEach(item => {
+                const tile = el('button', 'quick-tile' + (item.stock_quantity <= 0 ? ' out' : ''));
+                tile.type = 'button';
+                tile.title = `${item.name} · code ${item.code}`;
+                tile.append(
+                    pic('quick-tile-pic', item.image_url, item.icon),
+                    el('span', 'quick-tile-name', item.name),
+                    el('span', 'quick-tile-meta', `${item.code} · ${item.price_display}`),
+                );
+                tile.addEventListener('click', () => {
+                    lookupAndAdd(item.code);
+                    scannerInput.focus();
+                });
+                grid.appendChild(tile);
+            });
+        }
+
+        draw();
+        $('quick-panel').hidden = false;
+    } catch (err) { /* the tiles are a shortcut; typing the code still works */ }
+}
+
+loadQuickItems();
 render();

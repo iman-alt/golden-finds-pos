@@ -94,8 +94,9 @@ def _register_blueprints(app):
     app.register_blueprint(admin.bp)
     app.register_blueprint(api.bp)
 
-    from .views import deni
+    from .views import deni, quick_items
     app.register_blueprint(deni.bp)
+    app.register_blueprint(quick_items.bp)
 
 
 def _register_errors(app):

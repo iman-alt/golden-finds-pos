@@ -52,6 +52,8 @@
            class="{{ 'active' if request.endpoint == 'inventory.product_list' }}"><span class="nav-ico">🏷️</span>Products</a>
         <a href="{{ url_for('sell.history') }}"
            class="{{ 'active' if request.endpoint == 'sell.history' }}"><span class="nav-ico">🧾</span>Sales</a>
+        <a href="{{ url_for('quick.index') }}"
+           class="{{ 'active' if request.blueprint == 'quick' }}"><span class="nav-ico">⚡</span>Quick items</a>
         <a href="{{ url_for('deni.index') }}"
            class="{{ 'active' if request.blueprint == 'deni' }}"><span class="nav-ico">📒</span>Deni</a>
         {% if current_user['role'] != 'admin' %}

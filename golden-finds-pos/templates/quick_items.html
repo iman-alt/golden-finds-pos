@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Quick items - {{ shop_name }}{% endblock %}
+{% block main_class %}wide{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">⚡ Quick items</h1>
+        <p class="page-subtitle">
+            Things with no barcode. Give each one a short number &mdash; type it at the till
+            and press Enter, or tap its tile.
+        </p>
+    </div>
+    <a class="btn-plum" href="{{ url_for('quick.print_list') }}" target="_blank" rel="noopener">🖨️ Print the code list</a>
+</div>
+
+<div class="{{ 'deni-layout' if is_admin }}">
+
+    {% if is_admin %}
+    <section class="card till-col" id="create">
+        <header class="step-head">
+            <span class="step-num honey">+</span>
+            <div>
+                <h2>Create a quick item</h2>
+                <p>Pick a group and the next free code fills in for you</p>
+            </div>
+        </header>
+
+        {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+        <form method="POST" action="{{ url_for('quick.create') }}" enctype="multipart/form-data" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {% set chosen_group = (form.get('group') or request.args.get('group') or '1') | int %}
+            <label>Group</label>
+            <div class="group-picker">
+                {% for g in groups %}
+                <label class="group-option {{ 'selected' if g.digit == chosen_group }}">
+                    <input type="radio" name="group" value="{{ g.digit }}" data-next="{{ suggestions[g.digit] or '' }}"
+                           {{ 'checked' if g.digit == chosen_group }}>
+                    <span class="group-emoji">{{ g.emoji }}</span>
+                    <span>{{ g.label }}</span>
+                    <small>{{ g.digit }}xx</small>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label for="code">Code</label>
+                    <input type="text" id="code" name="code" inputmode="numeric" maxlength="6"
+                           class="code-input" value="{{ form.get('code') or suggestions[chosen_group] or '' }}" required>
+                    <p class="field-hint">Numbers only. You can type your own.</p>
+                </div>
+                <div>
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" value="{{ form.get('name', '') }}"
+                           placeholder="e.g. Hair pins" required autofocus>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label for="price">Price (KSh)</label>
+                    <input type="number" id="price" name="price" step="1" min="1" inputmode="numeric"
+                           value="{{ form.get('price', '') }}" required>
+                </div>
+                <div>
+                    <label for="cost_price">You pay (KSh) <span class="cell-sub">(optional)</span></label>
+                    <input type="number" id="cost_price" name="cost_price" step="1" min="0" inputmode="numeric"
+                           value="{{ form.get('cost_price', '') }}">
+                    <p class="field-hint">Lets reports show the profit.</p>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label for="stock">How many you have now <span class="cell-sub">(optional)</span></label>
+                    <input type="number" id="stock" name="stock" step="1" min="0" inputmode="numeric"
+                           value="{{ form.get('stock', '') }}">
+                </div>
+                <div>
+                    <label for="unit_type">Sold by</label>
+                    <select id="unit_type" name="unit_type">
+                        {% for u in unit_types %}
+                        <option value="{{ u }}" {{ 'selected' if form.get('unit_type', 'piece') == u }}>{{ u | capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <label class="checkbox-label">
+                <input type="checkbox" name="track_expiry" id="track_expiry" {{ 'checked' if form.get('track_expiry') }}>
+                It expires (milk, bread&hellip;) &mdash; add its stock with the expiry date at Stock in
+            </label>
+
+            <label>Photo <span class="cell-sub">(optional)</span></label>
+            {% include "_photo_picker.html" %}
+
+            <button type="submit" class="btn-primary btn-block btn-xl" style="margin-top:18px">💾 Save and create another</button>
+        </form>
+    </section>
+    {% endif %}
+
+    <section class="card till-col">
+        <header class="step-head">
+            <span class="step-num">#</span>
+            <div>
+                <h2>Your codes</h2>
+                <p>{{ grouped | sum(attribute='items', start=[]) | length }} quick item{{ '' if (grouped | sum(attribute='items', start=[]) | length) == 1 else 's' }}</p>
+            </div>
+        </header>
+
+        {% if grouped %}
+        <input type="search" id="code-filter" placeholder="Find a code or name…" style="margin-bottom:14px">
+        {% for g in grouped %}
+        <div class="code-group">
+            <h3>{{ g.emoji }} {{ g.label }}</h3>
+            <div class="code-list">
+                {% for item in g['items'] %}
+                <div class="code-row" data-search="{{ item.code }} {{ item.name | lower }}">
+                    <span class="code-badge">{{ item.code }}</span>
+                    <span class="thumb">{% if item.image_url %}<img src="{{ item.image_url }}" alt="" loading="lazy">{% else %}{{ item.icon }}{% endif %}</span>
+                    <span class="code-name">
+                        <strong>{{ item.name }}</strong>
+                        <span class="cell-sub">{{ item.stock_quantity }} in stock</span>
+                    </span>
+                    <strong class="code-price">{{ item.price_display }}</strong>
+                    {% if is_admin %}
+                    <a class="btn-link" href="{{ url_for('inventory.edit_product', product_id=item.id) }}">Edit</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="empty-msg">No quick items yet.{% if is_admin %} Create the first one on the left.{% else %} Ask Mum to add them.{% endif %}</p>
+        {% endif %}
+    </section>
+</div>
+
+<script>
+(() => {
+    const code = document.getElementById('code');
+    let typedOwn = {{ 'true' if form.get('code') else 'false' }};
+    if (code) code.addEventListener('input', () => { typedOwn = true; code.value = code.value.replace(/\D/g, ''); });
+
+    document.querySelectorAll('.group-option').forEach(option => {
+        option.addEventListener('click', () => {
+            document.querySelectorAll('.group-option').forEach(o => o.classList.remove('selected'));
+            option.classList.add('selected');
+            const radio = option.querySelector('input');
+            radio.checked = true;
+            // Suggest the group's next free code, unless a code was typed by hand.
+            if (code && !typedOwn && radio.dataset.next) code.value = radio.dataset.next;
+        });
+    });
+
+    const filter = document.getElementById('code-filter');
+    if (filter) filter.addEventListener('input', () => {
+        const q = filter.value.trim().toLowerCase();
+        document.querySelectorAll('.code-row').forEach(row => {
+            row.hidden = q && !row.dataset.search.includes(q);
+        });
+        document.querySelectorAll('.code-group').forEach(group => {
+            group.hidden = ![...group.querySelectorAll('.code-row')].some(r => !r.hidden);
+        });
+    });
+})();
+</script>
+{% endblock %}

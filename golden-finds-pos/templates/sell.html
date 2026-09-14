@@ -97,6 +97,16 @@
             Every item you scan shows up here, then in the list.
         </div>
 
+        {# One-tap tiles for items with no barcode. #}
+        <div id="quick-panel" class="quick-panel" hidden>
+            <div class="pairing-head">
+                <span class="pairing-title">⚡ Quick items &mdash; no barcode</span>
+                <a class="btn-link" href="{{ url_for('quick.index') }}">All codes</a>
+            </div>
+            <div id="quick-tabs" class="quick-tabs"></div>
+            <div id="quick-grid" class="quick-grid"></div>
+        </div>
+
         {# What customers usually take together. The person serving can
            hide it for good if they would rather not see it. #}
         <div id="pairing-strip" class="pairing-strip" hidden>
